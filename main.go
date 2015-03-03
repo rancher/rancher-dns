@@ -3,6 +3,9 @@ package main
 import (
 	"flag"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 	//	"strings"
 
 	log "github.com/Sirupsen/logrus"
@@ -12,7 +15,6 @@ import (
 var (
 	debug       = flag.Bool("debug", false, "Debug")
 	listen      = flag.String("listen", ":53", "Address to listen to (TCP and UDP)")
-	recurseAddr = flag.String("recurse", "", "Default DNS server where to send queries if no answers matched (IP[:port])")
 	answersFile = flag.String("answers", "./answers.json", "File containing the answers to respond with")
 	ttl         = flag.Uint("ttl", 600, "TTL for answers")
 
@@ -20,9 +22,10 @@ var (
 )
 
 func main() {
-	log.Info("Starting rancher-dns.")
+	log.Info("Starting rancher-dns")
 	parseFlags()
 	loadAnswers()
+	watchSignals()
 
 	udpServer := &dns.Server{Addr: *listen, Net: "udp"}
 	tcpServer := &dns.Server{Addr: *listen, Net: "tcp"}
@@ -39,37 +42,32 @@ func main() {
 func parseFlags() {
 	flag.Parse()
 
-	if *recurseAddr == "" {
-		log.Fatal("--recurse is required")
-	}
-
 	if *debug {
 		log.SetLevel(log.DebugLevel)
 	}
-
-	// Default to port 53
-	host, port, err := net.SplitHostPort(*recurseAddr)
-	if err != nil {
-		log.Fatal("Error parsing recurseAddr")
-		if port == "" {
-			port = "53"
-		}
-
-		*recurseAddr = net.JoinHostPort(host, port)
-	}
-
 }
 
 func loadAnswers() {
 	var err error
 
-	log.Info("Loading answers")
 	answers, err = ReadAnswersFile(*answersFile)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	log.Info("Loaded answers for ", len(answers), " IPs")
+}
+
+func watchSignals() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGHUP)
+
+	go func() {
+		for _ = range c {
+			log.Info("Received HUP signal, reloading answers")
+			loadAnswers()
+		}
+	}()
 }
 
 func route(w dns.ResponseWriter, req *dns.Msg) {
@@ -80,6 +78,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 
 	clientIp, _, _ := net.SplitHostPort(w.RemoteAddr().String())
 	question := req.Question[0]
+	fqdn := question.Name
 	rrType := dns.Type(req.Question[0].Qtype).String()
 
 	log.WithFields(log.Fields{
@@ -89,35 +88,79 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 	}).Debug("Request")
 
 	// Client-specific answers
-	found, ok := LocalAnswer(&question, rrType, clientIp)
+	found, ok := answers.LocalAnswer(fqdn, rrType, clientIp)
 	if ok {
 		log.WithFields(log.Fields{
-			"question": question.Name,
-			"type":     rrType,
 			"client":   clientIp,
-			"from":     clientIp,
+			"type":     rrType,
+			"question": question.Name,
+			"source":   "client",
 			"found":    len(found),
 		}).Info("Found match for client")
 
 		Respond(w, req, found)
 		return
+	} else {
+		log.Debug("No match found for client")
 	}
 
 	// Not-client-specific answers
-	found, ok = DefaultAnswer(&question, rrType, clientIp)
+	found, ok = answers.DefaultAnswer(fqdn, rrType, clientIp)
 	if ok {
 		log.WithFields(log.Fields{
-			"question": question.Name,
-			"type":     rrType,
 			"client":   clientIp,
-			"from":     DEFAULT_KEY,
+			"type":     rrType,
+			"question": question.Name,
+			"source":   "default",
 			"found":    len(found),
-		}).Info("Found match in", DEFAULT_KEY)
+		}).Info("Found match in ", DEFAULT_KEY)
 
 		Respond(w, req, found)
 		return
+	} else {
+		log.Debug("No match found in ", DEFAULT_KEY)
 	}
 
 	// Phone a friend
-	Proxy(w, req, *recurseAddr)
+	var recurseHosts Zone
+	found, ok = answers.Matching(clientIp, RECURSE_KEY)
+	if ok {
+		recurseHosts = append(recurseHosts, found...)
+	}
+	found, ok = answers.Matching(DEFAULT_KEY, RECURSE_KEY)
+	if ok {
+		recurseHosts = append(recurseHosts, found...)
+	}
+
+	var err error
+	for _, addr := range recurseHosts {
+		err = Proxy(w, req, addr)
+		if err == nil {
+			log.WithFields(log.Fields{
+				"client":   clientIp,
+				"type":     rrType,
+				"question": question.Name,
+				"source":   "client-recurse",
+				"host":     addr,
+			}).Info("Sent recursive response")
+
+			return
+		} else {
+			log.WithFields(log.Fields{
+				"client":   clientIp,
+				"type":     rrType,
+				"question": question.Name,
+				"source":   "default-recurse",
+				"host":     addr,
+			}).Warn("Recurser error:", err)
+		}
+	}
+
+	// I give up
+	log.WithFields(log.Fields{
+		"client":   clientIp,
+		"type":     rrType,
+		"question": question.Name,
+	}).Warn("No answer found")
+	dns.HandleFailed(w, req)
 }

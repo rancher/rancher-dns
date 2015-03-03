@@ -8,7 +8,11 @@ import (
 	"github.com/miekg/dns"
 )
 
+// The top-level key in the JSON for the default (not client-specific answers)
 const DEFAULT_KEY = "default"
+
+// The 2nd-level key in the JSON for the recursive resolver addresses
+const RECURSE_KEY = "recurse"
 
 type Zone []string
 type Zones map[string]Zone
@@ -25,32 +29,31 @@ func ReadAnswersFile(path string) (out Answers, err error) {
 	return
 }
 
-// Look for answers for the client's IP
-func LocalAnswer(question *dns.Question, rrType string, clientIp string) (Zone, bool) {
-	if rrType == "A" {
-		zones, ok := answers[clientIp]
-		if ok {
-			zone, ok := zones[question.Name]
-			if ok && len(zone) > 0 {
-				return zone, true
-			}
+func (answers *Answers) Matching(clientIp string, fqdn string) (Zone, bool) {
+	zones, ok := (*answers)[clientIp]
+	if ok {
+		zone, ok := zones[fqdn]
+		if ok && len(zone) > 0 {
+			return zone, true
 		}
 	}
 
 	return nil, false
 }
 
-// Look for answers for the default entry
-func DefaultAnswer(question *dns.Question, rrType string, clientIp string) (Zone, bool) {
+// Look for answers for the client's IP
+func (answers *Answers) LocalAnswer(fqdn string, rrType string, clientIp string) (Zone, bool) {
 	if rrType == "A" {
-		zones, ok := answers[DEFAULT_KEY]
-		if ok {
-			zone, ok := zones[question.Name]
+		return answers.Matching(clientIp, fqdn)
+	}
 
-			if ok && len(zone) > 0 {
-				return zone, true
-			}
-		}
+	return nil, false
+}
+
+// Look for answers for the default entry
+func (answers *Answers) DefaultAnswer(fqdn string, rrType string, clientIp string) (Zone, bool) {
+	if rrType == "A" {
+		return answers.Matching(DEFAULT_KEY, fqdn)
 	}
 
 	return nil, false
@@ -69,27 +72,3 @@ func Respond(w dns.ResponseWriter, req *dns.Msg, answers Zone) {
 
 	w.WriteMsg(m)
 }
-
-/*
-type Answer struct {
-	Type     string `json:"type"`
-	Ttl      uint32 `json:"ttl"`
-	Value    string `json:"value"`
-	Priority uint16 `json:"priority"`
-	Weight   uint16 `json:"weight"`
-	Port     uint16 `json:"port"`
-}
-
-func (all *Zone) OfType(rrType string) Zone {
-	var out Zone
-	rrType = strings.ToUpper(rrType)
-
-	for _, v := range *all {
-		if strings.ToUpper(v.Type) == rrType {
-			out = append(out, v)
-		}
-	}
-
-	return out
-}
-*/

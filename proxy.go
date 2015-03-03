@@ -1,42 +1,29 @@
 package main
 
 import (
-	log "github.com/Sirupsen/logrus"
 	"github.com/miekg/dns"
 	"net"
+	"strings"
 )
 
 // Proxy a request to an external server
-func Proxy(w dns.ResponseWriter, req *dns.Msg, addr string) {
+func Proxy(w dns.ResponseWriter, req *dns.Msg, addr string) (err error) {
 	transport := "udp"
 	if _, ok := w.RemoteAddr().(*net.TCPAddr); ok {
 		transport = "tcp"
 	}
 
-	ip, _, _ := net.SplitHostPort(w.RemoteAddr().String())
-	question := req.Question[0]
-	rrType := dns.Type(req.Question[0].Qtype).String()
+	// Default to port 53
+	if !strings.Contains(addr, ":") {
+		addr = addr + ":53"
+	}
 
 	c := &dns.Client{Net: transport}
 	resp, _, err := c.Exchange(req, addr)
-	if err != nil {
-		dns.HandleFailed(w, req)
-		log.WithFields(log.Fields{
-			"question": question.Name,
-			"type":     rrType,
-			"client":   ip,
-			"host":     addr,
-			"error":    err,
-		}).Error("Error making recursive request")
-		return
+	if err == nil {
+		w.WriteMsg(resp)
+		return nil
+	} else {
+		return err
 	}
-
-	log.WithFields(log.Fields{
-		"question": question.Name,
-		"type":     rrType,
-		"client":   ip,
-		"source":   "recurse",
-	}).Info("Sent recursive response")
-
-	w.WriteMsg(resp)
 }
