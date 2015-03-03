@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -e
+
+function set_project_vars() {
+    if [ -f .build_envs ]; then
+        . .build_envs
+    fi
+
+    PACKAGE=./gopath/src/$(<.package)
+    PROJECT=$(basename $PACKAGE)
+
+    export GOPATH=$(pwd)/Godeps/_workspace:$(pwd)/gopath
+}
