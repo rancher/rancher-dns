@@ -27,6 +27,6 @@ _testmain.go
 
 rancher-dns
 
-build
-dist
+/build
+/dist
 .DS_Store
