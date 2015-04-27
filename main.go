@@ -100,7 +100,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 	rrType := dns.Type(req.Question[0].Qtype).String()
 
 	log.WithFields(log.Fields{
-		"question": question.Name,
+		"question": fqdn,
 		"type":     rrType,
 		"client":   clientIp,
 	}).Debug("Request")
@@ -111,7 +111,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 		log.WithFields(log.Fields{
 			"client":   clientIp,
 			"type":     rrType,
-			"question": question.Name,
+			"question": fqdn,
 			"source":   "client",
 			"found":    len(found),
 		}).Info("Found match for client")
@@ -128,7 +128,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 		log.WithFields(log.Fields{
 			"client":   clientIp,
 			"type":     rrType,
-			"question": question.Name,
+			"question": fqdn,
 			"source":   "default",
 			"found":    len(found),
 		}).Info("Found match in ", DEFAULT_KEY)
@@ -157,7 +157,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 			log.WithFields(log.Fields{
 				"client":   clientIp,
 				"type":     rrType,
-				"question": question.Name,
+				"question": fqdn,
 				"source":   "client-recurse",
 				"host":     addr,
 			}).Info("Sent recursive response")
@@ -167,7 +167,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 			log.WithFields(log.Fields{
 				"client":   clientIp,
 				"type":     rrType,
-				"question": question.Name,
+				"question": fqdn,
 				"source":   "default-recurse",
 				"host":     addr,
 			}).Warn("Recurser error:", err)
@@ -178,7 +178,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 	log.WithFields(log.Fields{
 		"client":   clientIp,
 		"type":     rrType,
-		"question": question.Name,
+		"question": fqdn,
 	}).Warn("No answer found")
 	dns.HandleFailed(w, req)
 }
