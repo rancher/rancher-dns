@@ -23,5 +23,7 @@ if [ ! $(command -v go) ]; then
     install_go
 fi
 
-apt-get update
-apt-get install -y uuid-runtime xz-utils
+if [ -x "$(which xz)" ]; then
+    apt-get update
+    apt-get install -y xz-utils
+fi
