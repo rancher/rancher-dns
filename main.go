@@ -78,7 +78,8 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 
 	clientIp, _, _ := net.SplitHostPort(w.RemoteAddr().String())
 	question := req.Question[0]
-	fqdn := question.Name
+	// We are assuming the JSON config has all names as lower case
+	fqdn := strings.ToLower(question.Name)
 	rrType := dns.Type(req.Question[0].Qtype).String()
 
 	log.WithFields(log.Fields{
