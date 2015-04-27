@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net"
+	"os"
+
+	log "github.com/Sirupsen/logrus"
 
 	"github.com/miekg/dns"
 )
@@ -20,7 +23,10 @@ type Answers map[string]Zones
 
 func ReadAnswersFile(path string) (out Answers, err error) {
 	data, err := ioutil.ReadFile(path)
-	if err != nil {
+	if os.IsNotExist(err) {
+		log.Warnf("Failed to find %s", path)
+		return Answers{}, nil
+	} else if err != nil {
 		return
 	}
 

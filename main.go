@@ -2,11 +2,13 @@ package main
 
 import (
 	"flag"
+	"io/ioutil"
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
-	//	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/miekg/dns"
@@ -17,6 +19,8 @@ var (
 	listen      = flag.String("listen", ":53", "Address to listen to (TCP and UDP)")
 	answersFile = flag.String("answers", "./answers.json", "File containing the answers to respond with")
 	ttl         = flag.Uint("ttl", 600, "TTL for answers")
+	logFile     = flag.String("log", "", "Log file")
+	pidFile     = flag.String("pid-file", "", "PID to write to")
 
 	answers Answers
 )
@@ -45,17 +49,30 @@ func parseFlags() {
 	if *debug {
 		log.SetLevel(log.DebugLevel)
 	}
+
+	if *logFile != "" {
+		if output, err := os.OpenFile(*logFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666); err != nil {
+			log.Fatalf("Failed to log to file %s: %v", *logFile, err)
+		} else {
+			log.SetOutput(output)
+		}
+	}
+
+	if *pidFile != "" {
+		log.Infof("Writing pid %d to %s", os.Getpid(), *pidFile)
+		if err := ioutil.WriteFile(*pidFile, []byte(strconv.Itoa(os.Getpid())), 0644); err != nil {
+			log.Fatalf("Failed to write pid file %s: %v", *pidFile, err)
+		}
+	}
 }
 
 func loadAnswers() {
-	var err error
-
-	answers, err = ReadAnswersFile(*answersFile)
-	if err != nil {
-		log.Fatal(err)
+	if temp, err := ReadAnswersFile(*answersFile); err == nil {
+		answers = temp
+		log.Info("Loaded answers for ", len(answers), " IPs")
+	} else {
+		log.Errorf("Failed to reload answers: %v", err)
 	}
-
-	log.Info("Loaded answers for ", len(answers), " IPs")
 }
 
 func watchSignals() {
@@ -78,11 +95,12 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 
 	clientIp, _, _ := net.SplitHostPort(w.RemoteAddr().String())
 	question := req.Question[0]
-	fqdn := question.Name
+	// We are assuming the JSON config has all names as lower case
+	fqdn := strings.ToLower(question.Name)
 	rrType := dns.Type(req.Question[0].Qtype).String()
 
 	log.WithFields(log.Fields{
-		"question": question.Name,
+		"question": fqdn,
 		"type":     rrType,
 		"client":   clientIp,
 	}).Debug("Request")
@@ -93,7 +111,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 		log.WithFields(log.Fields{
 			"client":   clientIp,
 			"type":     rrType,
-			"question": question.Name,
+			"question": fqdn,
 			"source":   "client",
 			"found":    len(found),
 		}).Info("Found match for client")
@@ -110,7 +128,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 		log.WithFields(log.Fields{
 			"client":   clientIp,
 			"type":     rrType,
-			"question": question.Name,
+			"question": fqdn,
 			"source":   "default",
 			"found":    len(found),
 		}).Info("Found match in ", DEFAULT_KEY)
@@ -139,7 +157,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 			log.WithFields(log.Fields{
 				"client":   clientIp,
 				"type":     rrType,
-				"question": question.Name,
+				"question": fqdn,
 				"source":   "client-recurse",
 				"host":     addr,
 			}).Info("Sent recursive response")
@@ -149,7 +167,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 			log.WithFields(log.Fields{
 				"client":   clientIp,
 				"type":     rrType,
-				"question": question.Name,
+				"question": fqdn,
 				"source":   "default-recurse",
 				"host":     addr,
 			}).Warn("Recurser error:", err)
@@ -160,7 +178,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 	log.WithFields(log.Fields{
 		"client":   clientIp,
 		"type":     rrType,
-		"question": question.Name,
+		"question": fqdn,
 	}).Warn("No answer found")
 	dns.HandleFailed(w, req)
 }
