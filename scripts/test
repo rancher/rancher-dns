@@ -10,7 +10,7 @@ set_project_vars
 
 go test ./...
 
-result=$(find . -name "*.go" | grep -v ./Godeps | xargs gofmt -s -l)
+result=$(find . -name "*.go" | grep -v ./Godeps | xargs gofmt -l)
 if [ -n "$result" ]; then
     echo "${#result[@]} files failed gofmt check:"
 fi

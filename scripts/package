@@ -2,14 +2,19 @@
 
 cd $(dirname $0)/..
 
-. ./scripts/common_functions
+CONTENT=$(</proc/sys/kernel/random/uuid)
 
-set_project_vars
+rm -rf dist/artifacts
 
-rm -rf dist
-mkdir -p dist
+mkdir -p build/${CONTENT}
+mkdir -p dist/artifacts
+
+cp -rf apply.sh bin build/${CONTENT}
 
 cd build
-echo "Packaging:"
-tar cvJf ../dist/$PROJECT.tar.xz .
-echo Created dist/$PROJECT.tar.xz
+
+sha1sum -b $(find ${CONTENT} -type f) > ${CONTENT}/SHA1SUMS
+sha1sum ${CONTENT}/SHA1SUMS > ${CONTENT}/SHA1SUMSSUM
+
+tar czf ../dist/artifacts/rancher-dns.tar.gz ${CONTENT}
+echo Created dist/artifacts/rancher-dns.tar.gz

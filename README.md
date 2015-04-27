@@ -1,6 +1,9 @@
 rancher-dns
 ===========
 
+[![Build Status](http://drone.rancher.io/api/badge/github.com/rancherio/rancher-dns/status.svg?branch=master)](http://drone.rancher.io/github.com/rancherio/rancher-dns)
+
+
 A simple DNS server that returns different answers depending on the IP address of the client making the request.
 
 # Usage
