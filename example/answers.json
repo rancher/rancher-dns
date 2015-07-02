@@ -39,7 +39,9 @@
 
       "extchain.": {"answer": "extchain2."},
       "extchain2.": {"answer": "extchain3."},
-      "extchain3.": {"answer": "rancher.com."}
+      "extchain3.": {"answer": "rancher.com."},
+
+      "extcname.": {"answer": "cdn.rancher.io."}
     }
   },
 
