@@ -3,12 +3,14 @@ package main
 import (
 	"flag"
 	"io/ioutil"
+	"math/rand"
 	"net"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/miekg/dns"
@@ -18,7 +20,7 @@ var (
 	debug       = flag.Bool("debug", false, "Debug")
 	listen      = flag.String("listen", ":53", "Address to listen to (TCP and UDP)")
 	answersFile = flag.String("answers", "./answers.json", "File containing the answers to respond with")
-	ttl         = flag.Uint("ttl", 600, "TTL for answers")
+	defaultTtl  = flag.Uint("ttl", 600, "TTL for answers")
 	logFile     = flag.String("log", "", "Log file")
 	pidFile     = flag.String("pid-file", "", "PID to write to")
 
@@ -30,6 +32,10 @@ func main() {
 	parseFlags()
 	loadAnswers()
 	watchSignals()
+
+	seed := time.Now().UTC().UnixNano()
+	log.Debug("Set random seed to ", seed)
+	rand.Seed(seed)
 
 	udpServer := &dns.Server{Addr: *listen, Net: "udp"}
 	tcpServer := &dns.Server{Addr: *listen, Net: "tcp"}
@@ -88,97 +94,84 @@ func watchSignals() {
 }
 
 func route(w dns.ResponseWriter, req *dns.Msg) {
-	if len(req.Question) == 0 {
+	clientIp, _, _ := net.SplitHostPort(w.RemoteAddr().String())
+
+	// One question at a time please
+	if len(req.Question) != 1 {
 		dns.HandleFailed(w, req)
+		log.WithFields(log.Fields{"client": clientIp}).Warn("Rejected multi-question query")
 		return
 	}
 
-	clientIp, _, _ := net.SplitHostPort(w.RemoteAddr().String())
 	question := req.Question[0]
+	rrString := dns.Type(question.Qtype).String()
+
 	// We are assuming the JSON config has all names as lower case
 	fqdn := strings.ToLower(question.Name)
-	rrType := dns.Type(req.Question[0].Qtype).String()
 
-	log.WithFields(log.Fields{
-		"question": fqdn,
-		"type":     rrType,
-		"client":   clientIp,
-	}).Debug("Request")
-
-	// Client-specific answers
-	found, ok := answers.LocalAnswer(fqdn, rrType, clientIp)
-	if ok {
-		log.WithFields(log.Fields{
-			"client":   clientIp,
-			"type":     rrType,
-			"question": fqdn,
-			"source":   "client",
-			"found":    len(found),
-		}).Info("Found match for client")
-
-		Respond(w, req, found)
+	// Internets only
+	if question.Qclass != dns.ClassINET {
+		m := new(dns.Msg)
+		m.SetReply(req)
+		m.Authoritative = false
+		m.RecursionDesired = false
+		m.RecursionAvailable = false
+		m.Rcode = dns.RcodeNotImplemented
+		w.WriteMsg(m)
+		log.WithFields(log.Fields{"question": fqdn, "type": rrString, "client": clientIp}).Warn("Rejected non-inet query")
 		return
-	} else {
-		log.Debug("No match found for client")
 	}
 
-	// Not-client-specific answers
-	found, ok = answers.DefaultAnswer(fqdn, rrType, clientIp)
-	if ok {
-		log.WithFields(log.Fields{
-			"client":   clientIp,
-			"type":     rrType,
-			"question": fqdn,
-			"source":   "default",
-			"found":    len(found),
-		}).Info("Found match in ", DEFAULT_KEY)
-
-		Respond(w, req, found)
+	// ANY queries are bad, mmmkay...
+	if question.Qtype == dns.TypeANY {
+		m := new(dns.Msg)
+		m.SetReply(req)
+		m.Authoritative = false
+		m.RecursionDesired = false
+		m.RecursionAvailable = false
+		m.Rcode = dns.RcodeNotImplemented
+		w.WriteMsg(m)
+		log.WithFields(log.Fields{"question": fqdn, "type": rrString, "client": clientIp}).Warn("Rejected ANY query")
 		return
+	}
+
+	log.WithFields(log.Fields{"question": fqdn, "type": rrString, "client": clientIp}).Debug("Request")
+
+	// A records may return CNAME answer(s) plus A answer(s)
+	if question.Qtype == dns.TypeA {
+		found, ok := answers.Addresses(clientIp, fqdn, nil)
+		if ok && len(found) > 0 {
+			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn, "source": "mixed", "count": len(found)}).Info("Answered locally")
+			Respond(w, req, found)
+			return
+		}
 	} else {
-		log.Debug("No match found in ", DEFAULT_KEY)
+		// Specific request for another kind of record
+		keys := []string{clientIp, DEFAULT_KEY}
+		for _, key := range keys {
+			// Client-specific answers
+			found, ok := answers.Matching(question.Qtype, clientIp, fqdn)
+			if ok {
+				log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Info("Answered from config for ", key)
+
+				Respond(w, req, found)
+				return
+			}
+		}
+
+		log.Debug("No match found in config")
 	}
 
 	// Phone a friend
-	var recurseHosts Zone
-	found, ok = answers.Matching(clientIp, RECURSE_KEY)
-	if ok {
-		recurseHosts = append(recurseHosts, found...)
-	}
-	found, ok = answers.Matching(DEFAULT_KEY, RECURSE_KEY)
-	if ok {
-		recurseHosts = append(recurseHosts, found...)
-	}
-
-	var err error
-	for _, addr := range recurseHosts {
-		err = Proxy(w, req, addr)
-		if err == nil {
-			log.WithFields(log.Fields{
-				"client":   clientIp,
-				"type":     rrType,
-				"question": fqdn,
-				"source":   "client-recurse",
-				"host":     addr,
-			}).Info("Sent recursive response")
-
-			return
-		} else {
-			log.WithFields(log.Fields{
-				"client":   clientIp,
-				"type":     rrType,
-				"question": fqdn,
-				"source":   "default-recurse",
-				"host":     addr,
-			}).Warn("Recurser error:", err)
-		}
+	msg, err := ResolveTryAll(fqdn, answers.RecurseHosts(clientIp))
+	if err == nil {
+		msg.SetReply(req)
+		w.WriteMsg(msg)
+		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Info("Sent recursive response")
+		return
 	}
 
 	// I give up
-	log.WithFields(log.Fields{
-		"client":   clientIp,
-		"type":     rrType,
-		"question": fqdn,
-	}).Warn("No answer found")
+	log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Warn("No answer found")
 	dns.HandleFailed(w, req)
 }
