@@ -1,7 +1,7 @@
 rancher-dns
 ===========
 
-[![Build Status](http://drone.rancher.io/api/badge/github.com/rancherio/rancher-dns/status.svg?branch=master)](http://drone.rancher.io/github.com/rancherio/rancher-dns)
+[![Build Status](http://drone.rancher.io/api/badge/github.com/rancher/rancher-dns/status.svg?branch=master)](http://drone.rancher.io/github.com/rancherio/rancher-dns)
 
 
 A simple DNS server that returns different answers depending on the IP address of the client making the request.
@@ -87,6 +87,12 @@ If the result is a CNAME record, then the process is repeated recursively until 
 
 ## Limitations
   - Only A and CNAME records are currently supported.
+
+## Contact
+For bugs, questions, comments, corrections, suggestions, etc., open an issue in
+ [rancher/rancher](//github.com/rancher/rancher/issues) with a title starting with `[rancher-dns] `.
+
+Or just [click here](//github.com/rancher/rancher/issues/new?title=%5Brancher-dns%5D%20) to create a new issue.
 
 License
 =======
