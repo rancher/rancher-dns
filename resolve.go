@@ -6,9 +6,10 @@ import (
 	"strings"
 )
 
-func ResolveTryAll(fqdn string, resolvers []string) (resp *dns.Msg, err error) {
+func ResolveTryAll(fqdn string, qtype uint16, resolvers []string) (resp *dns.Msg, err error) {
 	for _, resolver := range resolvers {
-		resp, err = Resolve(fqdn, resolver)
+		log.WithFields(log.Fields{"fqdn": fqdn, "resolver": resolver}).Debug("Recursing")
+		resp, err = Resolve(fqdn, qtype, resolver)
 		if err == nil {
 			break
 		}
@@ -18,19 +19,21 @@ func ResolveTryAll(fqdn string, resolvers []string) (resp *dns.Msg, err error) {
 }
 
 // Proxy a request to an external server
-func Resolve(fqdn string, resolver string) (resp *dns.Msg, err error) {
-	resp, err = resolveTransport("udp", fqdn, resolver)
+func Resolve(fqdn string, qtype uint16, resolver string) (resp *dns.Msg, err error) {
+	resp, err = resolveTransport("udp", fqdn, qtype, resolver)
 	if err != nil {
-		if resp.Truncated {
+		if resp != nil && resp.Truncated {
 			log.Debug("Response truncated, retrying with TCP")
-			resp, err = resolveTransport("tcp", fqdn, resolver)
+			resp, err = resolveTransport("tcp", fqdn, qtype, resolver)
+		} else {
+			log.WithFields(log.Fields{"fqdn": fqdn, "resolver": resolver}).Warn("Recurser error: ", err)
 		}
 	}
 
 	return
 }
 
-func resolveTransport(transport string, fqdn string, resolver string) (resp *dns.Msg, err error) {
+func resolveTransport(transport string, fqdn string, qtype uint16, resolver string) (resp *dns.Msg, err error) {
 	// Default to port 53
 	if !strings.Contains(resolver, ":") {
 		resolver = resolver + ":53"
@@ -38,7 +41,7 @@ func resolveTransport(transport string, fqdn string, resolver string) (resp *dns
 
 	c := &dns.Client{Net: transport}
 	m := new(dns.Msg)
-	m.SetQuestion(fqdn, dns.TypeA)
+	m.SetQuestion(fqdn, qtype)
 
 	resp, _, err = c.Exchange(m, resolver)
 	return
