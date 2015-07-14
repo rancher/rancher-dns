@@ -135,11 +135,16 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 		return
 	}
 
-	log.WithFields(log.Fields{"question": fqdn, "type": rrString, "client": clientIp}).Debug("Request")
+	proto := "UDP"
+	if isTcp(w) {
+		proto = "TCP"
+	}
+
+	log.WithFields(log.Fields{"question": fqdn, "type": rrString, "client": clientIp, "proto": proto}).Debug("Request")
 
 	// A records may return CNAME answer(s) plus A answer(s)
 	if question.Qtype == dns.TypeA {
-		found, ok := answers.Addresses(clientIp, fqdn, nil)
+		found, ok := answers.Addresses(clientIp, fqdn, nil, 1)
 		if ok && len(found) > 0 {
 			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn, "source": "mixed", "count": len(found)}).Info("Answered locally")
 			Respond(w, req, found)
@@ -150,10 +155,9 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 		keys := []string{clientIp, DEFAULT_KEY}
 		for _, key := range keys {
 			// Client-specific answers
-			found, ok := answers.Matching(question.Qtype, clientIp, fqdn)
+			found, ok := answers.Matching(question.Qtype, key, fqdn)
 			if ok {
-				log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Info("Answered from config for ", key)
-
+				log.WithFields(log.Fields{"client": key, "type": rrString, "question": fqdn}).Info("Answered from config for ", key)
 				Respond(w, req, found)
 				return
 			}
@@ -163,7 +167,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 	}
 
 	// Phone a friend
-	msg, err := ResolveTryAll(fqdn, answers.RecurseHosts(clientIp))
+	msg, err := ResolveTryAll(fqdn, question.Qtype, answers.RecurseHosts(clientIp))
 	if err == nil {
 		msg.SetReply(req)
 		w.WriteMsg(msg)
@@ -174,4 +178,9 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 	// I give up
 	log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Warn("No answer found")
 	dns.HandleFailed(w, req)
+}
+
+func isTcp(w dns.ResponseWriter) bool {
+	_, ok := w.RemoteAddr().(*net.TCPAddr)
+	return ok
 }

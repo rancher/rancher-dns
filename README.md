@@ -47,6 +47,15 @@ Option      | Default        | Description
       // FQDN => { answer: a single FQDN, ttl: TTL for this specific answer }
       // Note: Key & Answer must be fully qualified (ending in dot)
       "www.": {"answer": "web.", "ttl": 42}
+    },
+
+    // TXT records
+    "txt": {
+      // FQDN => { answer: array of strings, ttl: TTL for this specific answer }
+      // Each string must be < 255 chars.
+      "example.com.": {"ttl": 43, "answer": [
+        "v=spf1 ip4:192.168.0.0/16 ~all"
+      ]}
     }
   },
 
@@ -86,7 +95,7 @@ A query is answered by returning the first match of:
 If the result is a CNAME record, then the process is repeated recursively until an A record is found.  If the chain does not end in an A record, is more than 10 levels deep, or is circular, an error is returned.
 
 ## Limitations
-  - Only A and CNAME records are currently supported.
+  - Only A, CNAME, and TXT records are currently supported in the local config.  Other kinds of records may be returned from recursive responses.
 
 ## Contact
 For bugs, questions, comments, corrections, suggestions, etc., open an issue in

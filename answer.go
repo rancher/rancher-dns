@@ -27,10 +27,16 @@ type RecordCname struct {
 	Answer string
 }
 
+type RecordTxt struct {
+	Ttl    *uint32
+	Answer []string
+}
+
 type ClientAnswers struct {
 	Recurse []string
 	A       map[string]RecordA
 	Cname   map[string]RecordCname
+	Txt     map[string]RecordTxt
 }
 
 type Answers map[string]ClientAnswers
@@ -75,8 +81,9 @@ func (answers *Answers) recurseHostsFor(clientIp string) []string {
 	return hosts
 }
 
-func (answers *Answers) Addresses(clientIp string, fqdn string, cnameParents []dns.RR) (records []dns.RR, ok bool) {
+func (answers *Answers) Addresses(clientIp string, fqdn string, cnameParents []dns.RR, depth int) (records []dns.RR, ok bool) {
 	fqdn = dns.Fqdn(fqdn)
+	log.WithFields(log.Fields{"fqdn": fqdn, "client": clientIp, "depth": depth}).Debug("Trying to resolve addresses")
 
 	// Limit recursing for non-obvious loops
 	if len(cnameParents) >= 10 {
@@ -97,7 +104,7 @@ func (answers *Answers) Addresses(clientIp string, fqdn string, cnameParents []d
 		}
 
 		// Recurse to find the eventual A for this CNAME
-		children, ok := answers.Addresses(clientIp, dns.Fqdn(cname.Target), append(cnameParents, cname))
+		children, ok := answers.Addresses(clientIp, dns.Fqdn(cname.Target), append(cnameParents, cname), depth+1)
 		if ok && len(children) > 0 {
 			log.WithFields(log.Fields{"fqdn": fqdn, "target": cname.Target, "client": clientIp}).Debug("Resolved CNAME ", children)
 			records = append(records, cname)
@@ -116,12 +123,13 @@ func (answers *Answers) Addresses(clientIp string, fqdn string, cnameParents []d
 
 	// Try the default section of the config
 	if clientIp != DEFAULT_KEY {
-		return answers.Addresses(DEFAULT_KEY, fqdn, nil)
+		return answers.Addresses(DEFAULT_KEY, fqdn, cnameParents, depth+1)
 	}
 
 	// When resolving CNAMES, check recursive server
 	if len(cnameParents) > 0 {
-		msg, err := ResolveTryAll(fqdn, answers.RecurseHosts(clientIp))
+		log.WithFields(log.Fields{"fqdn": fqdn, "client": clientIp}).Debug("Trying recursive servers")
+		msg, err := ResolveTryAll(fqdn, dns.TypeA, answers.RecurseHosts(clientIp))
 		if err == nil {
 			return msg.Answer, true
 		}
@@ -136,7 +144,7 @@ func (answers *Answers) Matching(qtype uint16, clientIp string, fqdn string) (re
 	if ok {
 		switch qtype {
 		case dns.TypeA:
-			log.WithFields(log.Fields{"qtype": qtype, "client": clientIp, "fqdn": fqdn}).Debug("Searching for A")
+			log.WithFields(log.Fields{"qtype": "A", "client": clientIp, "fqdn": fqdn}).Debug("Searching for A")
 			res, ok := client.A[fqdn]
 			if ok && len(res.Answer) > 0 {
 				ttl := uint32(*defaultTtl)
@@ -155,7 +163,7 @@ func (answers *Answers) Matching(qtype uint16, clientIp string, fqdn string) (re
 			}
 
 		case dns.TypeCNAME:
-			log.WithFields(log.Fields{"qtype": qtype, "client": clientIp, "fqdn": fqdn}).Debug("Searching for CNAME")
+			log.WithFields(log.Fields{"qtype": "CNAME", "client": clientIp, "fqdn": fqdn}).Debug("Searching for CNAME")
 			res, ok := client.Cname[fqdn]
 			ttl := uint32(*defaultTtl)
 			if res.Ttl != nil {
@@ -166,6 +174,27 @@ func (answers *Answers) Matching(qtype uint16, clientIp string, fqdn string) (re
 				hdr := dns.RR_Header{Name: fqdn, Rrtype: dns.TypeCNAME, Class: dns.ClassINET, Ttl: ttl}
 				record := &dns.CNAME{Hdr: hdr, Target: res.Answer}
 				records = append(records, record)
+			}
+
+		case dns.TypeTXT:
+			log.WithFields(log.Fields{"qtype": "TXT", "client": clientIp, "fqdn": fqdn}).Debug("Searching for TXT")
+			res, ok := client.Txt[fqdn]
+			ttl := uint32(*defaultTtl)
+			if res.Ttl != nil {
+				ttl = *res.Ttl
+			}
+
+			if ok {
+				for i := 0; i < len(res.Answer); i++ {
+					hdr := dns.RR_Header{Name: fqdn, Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: ttl}
+					str := res.Answer[i]
+					if len(str) > 255 {
+						log.WithFields(log.Fields{"qtype": "TXT", "client": clientIp, "fqdn": fqdn}).Warn("TXT record too long: ", str)
+						return nil, false
+					}
+					record := &dns.TXT{Hdr: hdr, Txt: []string{str}}
+					records = append(records, record)
+				}
 			}
 		}
 	}
@@ -192,5 +221,45 @@ func Respond(w dns.ResponseWriter, req *dns.Msg, records []dns.RR) {
 	m.RecursionAvailable = true
 	m.Compress = true
 	m.Answer = records
-	w.WriteMsg(m)
+
+	// Figure out the max response size
+	bufsize := uint16(512)
+	tcp := isTcp(w)
+
+	if o := req.IsEdns0(); o != nil {
+		bufsize = o.UDPSize()
+	}
+
+	if tcp {
+		bufsize = dns.MaxMsgSize - 1
+	} else if bufsize < 512 {
+		bufsize = 512
+	}
+
+	if m.Len() > dns.MaxMsgSize {
+		fqdn := dns.Fqdn(req.Question[0].Name)
+		log.WithFields(log.Fields{"fqdn": fqdn}).Debug("Response too big, dropping Extra")
+		m.Extra = nil
+		if m.Len() > dns.MaxMsgSize {
+			log.WithFields(log.Fields{"fqdn": fqdn}).Debug("Response still too big")
+			m := new(dns.Msg)
+			m.SetRcode(m, dns.RcodeServerFailure)
+		}
+	}
+
+	if m.Len() > int(bufsize) && !tcp {
+		log.Debug("Too big 1")
+		m.Extra = nil
+		if m.Len() > int(bufsize) {
+			log.Debug("Too big 2")
+			m.Answer = nil
+			m.Truncated = true
+		}
+	}
+
+	err := w.WriteMsg(m)
+	if err != nil {
+		log.Warn("Failed to return reply: ", err, m.Len())
+	}
+
 }
