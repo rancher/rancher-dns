@@ -43,16 +43,16 @@ type Answers map[string]ClientAnswers
 
 func ReadAnswersFile(path string) (out Answers, err error) {
 	data, err := ioutil.ReadFile(path)
-	if os.IsNotExist(err) {
-		log.Warnf("Failed to find %s", path)
-		return Answers{}, nil
-	} else if err != nil {
-		return
+	if err != nil {
+		if os.IsNotExist(err) {
+			log.Warn("Failed to find: ", path)
+		}
+		return nil, err
 	}
 
 	out = make(Answers)
 	err = json.Unmarshal(data, &out)
-	return
+	return out, err
 }
 
 func (answers *Answers) RecurseHosts(clientIp string) []string {

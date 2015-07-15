@@ -30,7 +30,10 @@ var (
 func main() {
 	log.Info("Starting rancher-dns")
 	parseFlags()
-	loadAnswers()
+	err := loadAnswers()
+	if err != nil {
+		log.Fatal("Cannot startup without a valid Answers file")
+	}
 	watchSignals()
 
 	seed := time.Now().UTC().UnixNano()
@@ -72,13 +75,16 @@ func parseFlags() {
 	}
 }
 
-func loadAnswers() {
-	if temp, err := ReadAnswersFile(*answersFile); err == nil {
+func loadAnswers() (err error) {
+	temp, err := ReadAnswersFile(*answersFile)
+	if err == nil {
 		answers = temp
 		log.Info("Loaded answers for ", len(answers), " IPs")
 	} else {
-		log.Errorf("Failed to reload answers: %v", err)
+		log.Errorf("Failed to load answers: %v", err)
 	}
+
+	return err
 }
 
 func watchSignals() {
