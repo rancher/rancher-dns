@@ -3,6 +3,7 @@ package logrus
 import (
 	"bytes"
 	"fmt"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -69,7 +70,8 @@ func (f *TextFormatter) Format(entry *Entry) ([]byte, error) {
 
 	prefixFieldClashes(entry.Data)
 
-	isColored := (f.ForceColors || isTerminal) && !f.DisableColors
+	isColorTerminal := isTerminal && (runtime.GOOS != "windows")
+	isColored := (f.ForceColors || isColorTerminal) && !f.DisableColors
 
 	if f.TimestampFormat == "" {
 		f.TimestampFormat = DefaultTimestampFormat
@@ -113,7 +115,7 @@ func (f *TextFormatter) printColored(b *bytes.Buffer, entry *Entry, keys []strin
 	}
 	for _, k := range keys {
 		v := entry.Data[k]
-		fmt.Fprintf(b, " \x1b[%dm%s\x1b[0m=%v", levelColor, k, v)
+		fmt.Fprintf(b, " \x1b[%dm%s\x1b[0m=%+v", levelColor, k, v)
 	}
 }
 
@@ -129,21 +131,28 @@ func needsQuoting(text string) bool {
 	return true
 }
 
-func (f *TextFormatter) appendKeyValue(b *bytes.Buffer, key, value interface{}) {
-	switch value.(type) {
+func (f *TextFormatter) appendKeyValue(b *bytes.Buffer, key string, value interface{}) {
+
+	b.WriteString(key)
+	b.WriteByte('=')
+
+	switch value := value.(type) {
 	case string:
-		if needsQuoting(value.(string)) {
-			fmt.Fprintf(b, "%v=%s ", key, value)
+		if needsQuoting(value) {
+			b.WriteString(value)
 		} else {
-			fmt.Fprintf(b, "%v=%q ", key, value)
+			fmt.Fprintf(b, "%q", value)
 		}
 	case error:
-		if needsQuoting(value.(error).Error()) {
-			fmt.Fprintf(b, "%v=%s ", key, value)
+		errmsg := value.Error()
+		if needsQuoting(errmsg) {
+			b.WriteString(errmsg)
 		} else {
-			fmt.Fprintf(b, "%v=%q ", key, value)
+			fmt.Fprintf(b, "%q", value)
 		}
 	default:
-		fmt.Fprintf(b, "%v=%v ", key, value)
+		fmt.Fprint(b, value)
 	}
+
+	b.WriteByte(' ')
 }

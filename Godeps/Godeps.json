@@ -4,12 +4,12 @@
 	"Deps": [
 		{
 			"ImportPath": "github.com/Sirupsen/logrus",
-			"Comment": "v0.7.3-2-g26709e2",
-			"Rev": "26709e2714106fb8ad40b773b711ebce25b78914"
+			"Comment": "v0.8.3-3-g07d998d",
+			"Rev": "07d998d174c4e2dc90e2f1989a20724220bca1ff"
 		},
 		{
 			"ImportPath": "github.com/miekg/dns",
-			"Rev": "b5baec579b7b8dbf57763eda35e912b6cfc2da5a"
+			"Rev": "3e549e2f6fd420cdffa528144b925305401bf55c"
 		}
 	]
 }
