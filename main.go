@@ -76,7 +76,7 @@ func parseFlags() {
 }
 
 func loadAnswers() (err error) {
-	temp, err := ReadAnswersFile(*answersFile)
+	temp, err := ParseAnswers(*answersFile)
 	if err == nil {
 		answers = temp
 		log.Info("Loaded answers for ", len(answers), " IPs")
@@ -152,7 +152,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 	if question.Qtype == dns.TypeA {
 		found, ok := answers.Addresses(clientIp, fqdn, nil, 1)
 		if ok && len(found) > 0 {
-			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn, "source": "mixed", "count": len(found)}).Info("Answered locally")
+			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn, "answers": len(found)}).Info("Answered locally")
 			Respond(w, req, found)
 			return
 		}
@@ -163,7 +163,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 			// Client-specific answers
 			found, ok := answers.Matching(question.Qtype, key, fqdn)
 			if ok {
-				log.WithFields(log.Fields{"client": key, "type": rrString, "question": fqdn}).Info("Answered from config for ", key)
+				log.WithFields(log.Fields{"client": key, "type": rrString, "question": fqdn, "answers": len(found)}).Info("Answered from config for ", key)
 				Respond(w, req, found)
 				return
 			}
@@ -173,7 +173,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 	}
 
 	// Phone a friend
-	msg, err := ResolveTryAll(fqdn, question.Qtype, answers.RecurseHosts(clientIp))
+	msg, err := ResolveTryAll(fqdn, question.Qtype, answers.Recursers(clientIp))
 	if err == nil {
 		msg.SetReply(req)
 		w.WriteMsg(msg)

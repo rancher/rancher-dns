@@ -6,9 +6,12 @@ import (
 	"crypto/rsa"
 	"io"
 	"math/big"
+	"strconv"
 	"strings"
 )
 
+// NewPrivateKey returns a PrivateKey by parsing the string s.
+// s should be in the same form of the BIND private key files.
 func (k *DNSKEY) NewPrivateKey(s string) (PrivateKey, error) {
 	if s[len(s)-1] != '\n' { // We need a closing newline
 		return k.ReadPrivateKey(strings.NewReader(s+"\n"), "")
@@ -32,8 +35,12 @@ func (k *DNSKEY) ReadPrivateKey(q io.Reader, file string) (PrivateKey, error) {
 		return nil, ErrPrivKey
 	}
 	// TODO(mg): check if the pubkey matches the private key
-	switch m["algorithm"] {
-	case "3 (DSA)":
+	algo, err := strconv.Atoi(strings.SplitN(m["algorithm"], " ", 2)[0])
+	if err != nil {
+		return nil, ErrPrivKey
+	}
+	switch uint8(algo) {
+	case DSA:
 		priv, e := readPrivateKeyDSA(m)
 		if e != nil {
 			return nil, e
@@ -44,15 +51,15 @@ func (k *DNSKEY) ReadPrivateKey(q io.Reader, file string) (PrivateKey, error) {
 		}
 		priv.PublicKey = *pub
 		return (*DSAPrivateKey)(priv), e
-	case "1 (RSAMD5)":
+	case RSAMD5:
 		fallthrough
-	case "5 (RSASHA1)":
+	case RSASHA1:
 		fallthrough
-	case "7 (RSASHA1NSEC3SHA1)":
+	case RSASHA1NSEC3SHA1:
 		fallthrough
-	case "8 (RSASHA256)":
+	case RSASHA256:
 		fallthrough
-	case "10 (RSASHA512)":
+	case RSASHA512:
 		priv, e := readPrivateKeyRSA(m)
 		if e != nil {
 			return nil, e
@@ -63,11 +70,11 @@ func (k *DNSKEY) ReadPrivateKey(q io.Reader, file string) (PrivateKey, error) {
 		}
 		priv.PublicKey = *pub
 		return (*RSAPrivateKey)(priv), e
-	case "12 (ECC-GOST)":
+	case ECCGOST:
 		return nil, ErrPrivKey
-	case "13 (ECDSAP256SHA256)":
+	case ECDSAP256SHA256:
 		fallthrough
-	case "14 (ECDSAP384SHA384)":
+	case ECDSAP384SHA384:
 		priv, e := readPrivateKeyECDSA(m)
 		if e != nil {
 			return nil, e
@@ -170,9 +177,9 @@ func parseKey(r io.Reader, file string) (map[string]string, error) {
 	for l := range c {
 		// It should alternate
 		switch l.value {
-		case _KEY:
+		case zKey:
 			k = l.token
-		case _VALUE:
+		case zValue:
 			if k == "" {
 				return nil, &ParseError{file, "no private key seen", l}
 			}
@@ -202,14 +209,14 @@ func klexer(s *scan, c chan lex) {
 			}
 			l.token = str
 			if key {
-				l.value = _KEY
+				l.value = zKey
 				c <- l
 				// Next token is a space, eat it
 				s.tokenText()
 				key = false
 				str = ""
 			} else {
-				l.value = _VALUE
+				l.value = zValue
 			}
 		case ';':
 			commt = true
@@ -218,7 +225,7 @@ func klexer(s *scan, c chan lex) {
 				// Reset a comment
 				commt = false
 			}
-			l.value = _VALUE
+			l.value = zValue
 			l.token = str
 			c <- l
 			str = ""
@@ -235,7 +242,7 @@ func klexer(s *scan, c chan lex) {
 	if len(str) > 0 {
 		// Send remainder
 		l.token = str
-		l.value = _VALUE
+		l.value = zValue
 		c <- l
 	}
 }

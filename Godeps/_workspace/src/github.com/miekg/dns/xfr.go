@@ -107,7 +107,7 @@ func (t *Transfer) inIxfr(id uint16, c chan *Envelope) {
 		t.SetReadDeadline(time.Now().Add(timeout))
 		in, err := t.ReadMsg()
 		if err != nil {
-			c <- &Envelope{in.Answer, err}
+			c <- &Envelope{nil, err}
 			return
 		}
 		if id != in.Id {
@@ -193,6 +193,7 @@ func (t *Transfer) ReadMsg() (*Msg, error) {
 		}
 		// Need to work on the original message p, as that was used to calculate the tsig.
 		err = TsigVerify(p, t.TsigSecret[ts.Hdr.Name], t.tsigRequestMAC, t.tsigTimersOnly)
+		t.tsigRequestMAC = ts.MAC
 	}
 	return m, err
 }
