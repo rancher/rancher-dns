@@ -21,4 +21,4 @@ fi
 
 echo export GOPATH=$GOPATH
 
-go build -o bin/${PROJECT}
+go build -o bin/${PROJECT} -a -tags "netgo" -installsuffix netgo -ldflags "-extldflags -static"
