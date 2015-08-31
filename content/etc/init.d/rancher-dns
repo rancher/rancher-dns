@@ -1,0 +1,28 @@
+#!/sbin/openrc-run
+
+CATTLE_HOME=${CATTLE_HOME:-/var/lib/cattle}
+PIDFILE=/var/run/${SVCNAME}.pid
+DAEMON=${CATTLE_HOME}/bin/rancher-dns
+CONF=${CATTLE_HOME}/etc/cattle/dns/answers.json
+DAEMON_ARGS="-log /var/log/rancher-dns.log -answers $CONF -pid-file ${PIDFILE}"
+
+start() {
+	ebegin "Starting ${SVCNAME}"
+
+	mkdir -p $CATTLE_HOME
+
+	if [ ! -f $CONF ]; then
+		eend 1 "Cannot startup without a valid Answers file"
+		return
+	fi
+
+	start-stop-daemon --start -b -d $CATTLE_HOME --pidfile $PIDFILE --exec $DAEMON -- $DAEMON_ARGS
+	eend $?
+}
+
+stop() {
+	ebegin "Stopping ${SVCNAME}"
+	start-stop-daemon --stop --exec $DAEMON --pidfile $PIDFILE
+	rm -f $PIDFILE
+	eend $?
+}

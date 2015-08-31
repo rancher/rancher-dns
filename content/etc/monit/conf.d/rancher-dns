@@ -1,0 +1,3 @@
+ check process rancher-dns with pidfile /var/run/rancher-dns.pid
+   start program = "/etc/init.d/rancher-dns restart"
+   stop  program = "/etc/init.d/rancher-dns stop"

@@ -14,8 +14,11 @@ stage_files
 # Make sure that when node start is doesn't think it holds the config.sh lock
 unset CATTLE_CONFIG_FLOCKER
 
-if /etc/init.d/rancher-dns status; then
-    /etc/init.d/rancher-dns restart
-else
-    /etc/init.d/rancher-dns start
+# Can't start without config
+if [ -f $CATTLE_HOME/etc/etc/cattle/dns/answers.json ]; then
+    if /etc/init.d/rancher-dns status; then
+        /etc/init.d/rancher-dns restart
+    else
+        /etc/init.d/rancher-dns start
+    fi
 fi
