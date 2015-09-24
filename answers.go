@@ -135,6 +135,20 @@ func (answers *Answers) Matching(qtype uint16, clientIp string, fqdn string) (re
 				records = append(records, record)
 			}
 
+		case dns.TypePTR:
+			log.WithFields(log.Fields{"qtype": "PTR", "client": clientIp, "fqdn": fqdn}).Debug("Searching for PTR")
+			res, ok := client.Ptr[fqdn]
+			ttl := uint32(*defaultTtl)
+			if res.Ttl != nil {
+				ttl = *res.Ttl
+			}
+
+			if ok {
+				hdr := dns.RR_Header{Name: fqdn, Rrtype: dns.TypePTR, Class: dns.ClassINET, Ttl: ttl}
+				record := &dns.PTR{Hdr: hdr, Ptr: res.Answer}
+				records = append(records, record)
+			}
+
 		case dns.TypeTXT:
 			log.WithFields(log.Fields{"qtype": "TXT", "client": clientIp, "fqdn": fqdn}).Debug("Searching for TXT")
 			res, ok := client.Txt[fqdn]

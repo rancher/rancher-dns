@@ -3,6 +3,7 @@
     "recurse": ["8.8.4.4","8.8.8.8:53"],
 
     "a": {
+      "app.": {"answer": ["10.1.2.3"]},
       "mysql.": {"answer": ["172.16.2.3"], "ttl": 60},
       "web.": {"answer": ["172.16.2.4","172.16.2.5","172.16.2.6"], "ttl": 14},
 
@@ -42,6 +43,12 @@
       "extchain3.": {"answer": "rancher.com."},
 
       "extcname.": {"answer": "cdn.rancher.io."}
+    },
+
+    "ptr": {
+      "2.3.4.5": {"answer": "ptr.rancher.internal."},
+      "5.3.4.2": {"answer": "ptr2.rancher.internal."},
+      "6.2.4.3.in-addr.arpa.": {"answer": "ptr3.rancher.internal."}
     },
 
     "txt": {
