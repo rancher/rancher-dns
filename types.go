@@ -10,6 +10,11 @@ type RecordCname struct {
 	Answer string
 }
 
+type RecordPtr struct {
+	Ttl    *uint32
+	Answer string
+}
+
 type RecordTxt struct {
 	Ttl    *uint32
 	Answer []string
@@ -19,6 +24,7 @@ type ClientAnswers struct {
 	Recurse []string
 	A       map[string]RecordA
 	Cname   map[string]RecordCname
+	Ptr     map[string]RecordPtr
 	Txt     map[string]RecordTxt
 }
 

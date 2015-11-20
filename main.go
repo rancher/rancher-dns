@@ -152,7 +152,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 	if question.Qtype == dns.TypeA {
 		found, ok := answers.Addresses(clientIp, fqdn, nil, 1)
 		if ok && len(found) > 0 {
-			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn, "answers": len(found)}).Info("Answered locally")
+			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn, "answers": len(found)}).Debug("Answered locally")
 			Respond(w, req, found)
 			return
 		}
@@ -163,7 +163,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 			// Client-specific answers
 			found, ok := answers.Matching(question.Qtype, key, fqdn)
 			if ok {
-				log.WithFields(log.Fields{"client": key, "type": rrString, "question": fqdn, "answers": len(found)}).Info("Answered from config for ", key)
+				log.WithFields(log.Fields{"client": key, "type": rrString, "question": fqdn, "answers": len(found)}).Debug("Answered from config for ", key)
 				Respond(w, req, found)
 				return
 			}
@@ -177,12 +177,12 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 	if err == nil {
 		msg.SetReply(req)
 		w.WriteMsg(msg)
-		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Info("Sent recursive response")
+		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent recursive response")
 		return
 	}
 
 	// I give up
-	log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Warn("No answer found")
+	log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Info("No answer found")
 	dns.HandleFailed(w, req)
 }
 
