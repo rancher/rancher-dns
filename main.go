@@ -100,6 +100,13 @@ func watchSignals() {
 }
 
 func route(w dns.ResponseWriter, req *dns.Msg) {
+	// Setup reply
+	m := new(dns.Msg)
+	m.SetReply(req)
+	m.Authoritative = true
+	m.RecursionAvailable = true
+	m.Compress = true
+
 	clientIp, _, _ := net.SplitHostPort(w.RemoteAddr().String())
 
 	// One question at a time please
@@ -117,8 +124,6 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 
 	// Internets only
 	if question.Qclass != dns.ClassINET {
-		m := new(dns.Msg)
-		m.SetReply(req)
 		m.Authoritative = false
 		m.RecursionDesired = false
 		m.RecursionAvailable = false
@@ -130,8 +135,6 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 
 	// ANY queries are bad, mmmkay...
 	if question.Qtype == dns.TypeANY {
-		m := new(dns.Msg)
-		m.SetReply(req)
 		m.Authoritative = false
 		m.RecursionDesired = false
 		m.RecursionAvailable = false
@@ -153,7 +156,8 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 		found, ok := answers.Addresses(clientIp, fqdn, nil, 1)
 		if ok && len(found) > 0 {
 			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn, "answers": len(found)}).Debug("Answered locally")
-			Respond(w, req, found)
+			m.Answer = found
+			Respond(w, req, m)
 			return
 		}
 	} else {
@@ -164,7 +168,8 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 			found, ok := answers.Matching(question.Qtype, key, fqdn)
 			if ok {
 				log.WithFields(log.Fields{"client": key, "type": rrString, "question": fqdn, "answers": len(found)}).Debug("Answered from config for ", key)
-				Respond(w, req, found)
+				m.Answer = found
+				Respond(w, req, m)
 				return
 			}
 		}
@@ -172,11 +177,12 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 		log.Debug("No match found in config")
 	}
 
-	// Phone a friend
-	msg, err := ResolveTryAll(fqdn, question.Qtype, answers.Recursers(clientIp))
+	// Phone a friend - Forward original query
+	msg, err := ResolveTryAll(req, answers.Recursers(clientIp))
 	if err == nil {
-		msg.SetReply(req)
-		w.WriteMsg(msg)
+		msg.Compress = true
+		msg.Id = req.Id
+		Respond(w, req, msg)
 		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent recursive response")
 		return
 	}
