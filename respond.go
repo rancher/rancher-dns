@@ -5,14 +5,7 @@ import (
 	"github.com/miekg/dns"
 )
 
-func Respond(w dns.ResponseWriter, req *dns.Msg, records []dns.RR) {
-	m := new(dns.Msg)
-	m.SetReply(req)
-	m.Authoritative = true
-	m.RecursionAvailable = true
-	m.Compress = true
-	m.Answer = records
-
+func Respond(w dns.ResponseWriter, req *dns.Msg, m *dns.Msg) {
 	// Figure out the max response size
 	bufsize := uint16(512)
 	tcp := isTcp(w)
@@ -27,24 +20,22 @@ func Respond(w dns.ResponseWriter, req *dns.Msg, records []dns.RR) {
 		bufsize = 512
 	}
 
-	if m.Len() > dns.MaxMsgSize {
+	// Make sure the payload fits the buffer size. If the message is too large we strip the Extra section.
+	// If it's still too large we return a truncated message for UDP queries and ServerFailure for TCP queries.
+	if m.Len() > int(bufsize) {
 		fqdn := dns.Fqdn(req.Question[0].Name)
-		log.WithFields(log.Fields{"fqdn": fqdn}).Debug("Response too big, dropping Extra")
-		m.Extra = nil
-		if m.Len() > dns.MaxMsgSize {
-			log.WithFields(log.Fields{"fqdn": fqdn}).Debug("Response still too big")
-			m := new(dns.Msg)
-			m.SetRcode(m, dns.RcodeServerFailure)
-		}
-	}
-
-	if m.Len() > int(bufsize) && !tcp {
-		log.Debug("Too big 1")
+		log.WithFields(log.Fields{"fqdn": fqdn}).Debug("Response too big, dropping Authority and Extra")
 		m.Extra = nil
 		if m.Len() > int(bufsize) {
-			log.Debug("Too big 2")
-			m.Answer = nil
-			m.Truncated = true
+			if tcp {
+				log.WithFields(log.Fields{"fqdn": fqdn}).Debug("Response still too big, return ServerFailure")
+				m = new(dns.Msg)
+				m.SetRcode(req, dns.RcodeServerFailure)
+			} else {
+				log.WithFields(log.Fields{"fqdn": fqdn}).Debug("Response still too big, return truncated message")
+				m.Answer = nil
+				m.Truncated = true
+			}
 		}
 	}
 

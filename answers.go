@@ -88,7 +88,9 @@ func (answers *Answers) Addresses(clientIp string, fqdn string, cnameParents []d
 	// When resolving CNAMES, check recursive server
 	if len(cnameParents) > 0 {
 		log.WithFields(log.Fields{"fqdn": fqdn, "client": clientIp}).Debug("Trying recursive servers")
-		msg, err := ResolveTryAll(fqdn, dns.TypeA, answers.Recursers(clientIp))
+		r := new(dns.Msg)
+		r.SetQuestion(fqdn, dns.TypeA)
+		msg, err := ResolveTryAll(r, answers.Recursers(clientIp))
 		if err == nil {
 			return msg.Answer, true
 		}
