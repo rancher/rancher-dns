@@ -25,8 +25,6 @@ _testmain.go
 
 *.sw?
 
-rancher-dns
-
 /build
 /dist
 .DS_Store
