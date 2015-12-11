@@ -145,13 +145,13 @@ func TestTXTEscapeParsing(t *testing.T) {
 	for _, s := range test {
 		rr, err := NewRR(fmt.Sprintf("example.com. IN TXT %v", s[0]))
 		if err != nil {
-			t.Errorf("Could not parse %v TXT: %s", s[0], err)
+			t.Errorf("could not parse %v TXT: %s", s[0], err)
 			continue
 		}
 
 		txt := sprintTxt(rr.(*TXT).Txt)
 		if txt != s[1] {
-			t.Errorf("Mismatch after parsing `%v` TXT record: `%v` != `%v`", s[0], txt, s[1])
+			t.Errorf("mismatch after parsing `%v` TXT record: `%v` != `%v`", s[0], txt, s[1])
 		}
 	}
 }
@@ -569,7 +569,7 @@ test                          IN CNAME test.a.example.com.
 	t.Logf("%d RRs parsed in %.2f s (%.2f RR/s)", i, float32(delta)/1e9, float32(i)/(float32(delta)/1e9))
 }
 
-func ExampleZone() {
+func ExampleParseZone() {
 	zone := `$ORIGIN .
 $TTL 3600       ; 1 hour
 name                    IN SOA  a6.nstld.com. hostmaster.nic.name. (
@@ -799,7 +799,7 @@ func TestLowercaseTokens(t *testing.T) {
 	}
 }
 
-func ExampleGenerate() {
+func ExampleParseZone_generate() {
 	// From the manual: http://www.bind9.net/manual/bind/9.3.2/Bv9ARM.ch06.html#id2566761
 	zone := "$GENERATE 1-2 0 NS SERVER$.EXAMPLE.\n$GENERATE 1-8 $ CNAME $.0"
 	to := ParseZone(strings.NewReader(zone), "0.0.192.IN-ADDR.ARPA.", "")
@@ -905,16 +905,13 @@ func TestILNP(t *testing.T) {
 	}
 }
 
-func TestNsapGposEidNimloc(t *testing.T) {
+func TestGposEidNimloc(t *testing.T) {
 	dt := map[string]string{
-		"foo.bar.com.    IN  NSAP   21 47000580ffff000000321099991111222233334444": "foo.bar.com.\t3600\tIN\tNSAP\t0x47000580ffff000000321099991111222233334444",
-		"foo.bar.com.    IN  NSAP   0x47000580ffff000000321099991111222233334444":  "foo.bar.com.\t3600\tIN\tNSAP\t0x47000580ffff000000321099991111222233334444",
-		"host.school.de  IN  NSAP   17 39276f3100111100002222333344449876":         "host.school.de.\t3600\tIN\tNSAP\t0x39276f3100111100002222333344449876",
-		"444433332222111199990123000000ff. NSAP-PTR foo.bar.com.":                  "444433332222111199990123000000ff.\t3600\tIN\tNSAP-PTR\tfoo.bar.com.",
-		"lillee. IN  GPOS -32.6882 116.8652 10.0":                                  "lillee.\t3600\tIN\tGPOS\t-32.6882 116.8652 10.0",
-		"hinault. IN GPOS -22.6882 116.8652 250.0":                                 "hinault.\t3600\tIN\tGPOS\t-22.6882 116.8652 250.0",
-		"VENERA.   IN NIMLOC  75234159EAC457800920":                                "VENERA.\t3600\tIN\tNIMLOC\t75234159EAC457800920",
-		"VAXA.     IN EID     3141592653589793":                                    "VAXA.\t3600\tIN\tEID\t3141592653589793",
+		"444433332222111199990123000000ff. NSAP-PTR foo.bar.com.": "444433332222111199990123000000ff.\t3600\tIN\tNSAP-PTR\tfoo.bar.com.",
+		"lillee. IN  GPOS -32.6882 116.8652 10.0":                 "lillee.\t3600\tIN\tGPOS\t-32.6882 116.8652 10.0",
+		"hinault. IN GPOS -22.6882 116.8652 250.0":                "hinault.\t3600\tIN\tGPOS\t-22.6882 116.8652 250.0",
+		"VENERA.   IN NIMLOC  75234159EAC457800920":               "VENERA.\t3600\tIN\tNIMLOC\t75234159EAC457800920",
+		"VAXA.     IN EID     3141592653589793":                   "VAXA.\t3600\tIN\tEID\t3141592653589793",
 	}
 	for i, o := range dt {
 		rr, err := NewRR(i)
@@ -1240,8 +1237,8 @@ func TestNewPrivateKey(t *testing.T) {
 		}
 
 		switch newPrivKey := newPrivKey.(type) {
-		case *RSAPrivateKey:
-			(*rsa.PrivateKey)(newPrivKey).Precompute()
+		case *rsa.PrivateKey:
+			newPrivKey.Precompute()
 		}
 
 		if !reflect.DeepEqual(privkey, newPrivKey) {
@@ -1463,6 +1460,54 @@ func TestParseCAA(t *testing.T) {
 		"example.net.	CAA	128 tbs \"critical\"": "example.net.\t3600\tIN\tCAA\t128 tbs \"critical\"",
 		"example.net.	CAA	2 auth \"0>09\\006\\010+\\006\\001\\004\\001\\214y\\002\\003\\001\\006\\009`\\134H\\001e\\003\\004\\002\\001\\004 y\\209\\012\\221r\\220\\156Q\\218\\150\\150{\\166\\245:\\231\\182%\\157:\\133\\179}\\1923r\\238\\151\\255\\128q\\145\\002\\001\\000\"": "example.net.\t3600\tIN\tCAA\t2 auth \"0>09\\006\\010+\\006\\001\\004\\001\\214y\\002\\003\\001\\006\\009`\\134H\\001e\\003\\004\\002\\001\\004 y\\209\\012\\221r\\220\\156Q\\218\\150\\150{\\166\\245:\\231\\182%\\157:\\133\\179}\\1923r\\238\\151\\255\\128q\\145\\002\\001\\000\"",
 		"example.net.   TYPE257	0 issue \"symantec.com\"": "example.net.\t3600\tIN\tCAA\t0 issue \"symantec.com\"",
+	}
+	for i, o := range lt {
+		rr, err := NewRR(i)
+		if err != nil {
+			t.Error("failed to parse RR: ", err)
+			continue
+		}
+		if rr.String() != o {
+			t.Errorf("`%s' should be equal to\n`%s', but is     `%s'", i, o, rr.String())
+		} else {
+			t.Logf("RR is OK: `%s'", rr.String())
+		}
+	}
+}
+
+func TestPackCAA(t *testing.T) {
+	m := new(Msg)
+	record := new(CAA)
+	record.Hdr = RR_Header{Name: "example.com.", Rrtype: TypeCAA, Class: ClassINET, Ttl: 0}
+	record.Tag = "issue"
+	record.Value = "symantec.com"
+	record.Flag = 1
+
+	m.Answer = append(m.Answer, record)
+	bytes, err := m.Pack()
+	if err != nil {
+		t.Fatalf("failed to pack msg: %v", err)
+	}
+	if err := m.Unpack(bytes); err != nil {
+		t.Fatalf("failed to unpack msg: %v", err)
+	}
+	if len(m.Answer) != 1 {
+		t.Fatalf("incorrect number of answers unpacked")
+	}
+	rr := m.Answer[0].(*CAA)
+	if rr.Tag != "issue" {
+		t.Fatalf("invalid tag for unpacked answer")
+	} else if rr.Value != "symantec.com" {
+		t.Fatalf("invalid value for unpacked answer")
+	} else if rr.Flag != 1 {
+		t.Fatalf("invalid flag for unpacked answer")
+	}
+}
+
+func TestParseURI(t *testing.T) {
+	lt := map[string]string{
+		"_http._tcp. IN URI   10 1 \"http://www.example.com/path\"": "_http._tcp.\t3600\tIN\tURI\t10 1 \"http://www.example.com/path\"",
+		"_http._tcp. IN URI   10 1 \"\"":                            "_http._tcp.\t3600\tIN\tURI\t10 1 \"\"",
 	}
 	for i, o := range lt {
 		rr, err := NewRR(i)

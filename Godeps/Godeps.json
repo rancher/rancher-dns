@@ -1,5 +1,5 @@
 {
-	"ImportPath": "github.com/rancherio/rancher-dns",
+	"ImportPath": "github.com/rancher/rancher-dns",
 	"GoVersion": "go1.4.1",
 	"Deps": [
 		{
@@ -9,7 +9,7 @@
 		},
 		{
 			"ImportPath": "github.com/miekg/dns",
-			"Rev": "3e549e2f6fd420cdffa528144b925305401bf55c"
+			"Rev": "75e6e86cc601825c5dbcd4e0c209eab180997cd7"
 		}
 	]
 }
