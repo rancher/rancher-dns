@@ -182,6 +182,15 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 	if err == nil {
 		msg.Compress = true
 		msg.Id = req.Id
+
+		// We don't support AAAA, but an NXDOMAIN from the recursive resolver
+		// doesn't necessarily mean there are never any records for that domain,
+		// so rewrite the response code to NOERROR.
+		if (question.Qtype == dns.TypeAAAA) && (msg.Rcode == dns.RcodeNameError) {
+			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Rewrote AAAA NXDOMAIN to NOERROR")
+			msg.Rcode = dns.RcodeSuccess
+		}
+
 		Respond(w, req, msg)
 		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent recursive response")
 		return
