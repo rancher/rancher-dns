@@ -28,3 +28,4 @@ _testmain.go
 /build
 /dist
 .DS_Store
+rancher-dns

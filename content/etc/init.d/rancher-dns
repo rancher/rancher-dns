@@ -13,7 +13,7 @@ export PIDFILE=/var/run/rancher-dns.pid
 RUNDIR=$CATTLE_HOME
 DAEMON=$RUNDIR/bin/rancher-dns
 RUNNING_DAEMON=$CATTLE_HOME/bin/rancher-dns
-DAEMON_ARGS="-log /var/log/rancher-dns.log -answers ${CATTLE_HOME}/etc/cattle/dns/answers.json -pid-file ${PIDFILE}"
+DAEMON_ARGS="-log /var/log/rancher-dns.log -answers ${CATTLE_HOME}/etc/cattle/dns/answers.json -pid-file ${PIDFILE} -ttl 1"
 NAME=rancher-dns
 DESC=rancher-dns
 
