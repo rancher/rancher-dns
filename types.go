@@ -21,6 +21,7 @@ type RecordTxt struct {
 }
 
 type ClientAnswers struct {
+	Search  []string
 	Recurse []string
 	A       map[string]RecordA
 	Cname   map[string]RecordCname
