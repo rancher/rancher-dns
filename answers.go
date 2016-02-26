@@ -3,6 +3,7 @@ package main
 import (
 	"math/rand"
 	"net"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/miekg/dns"
@@ -14,6 +15,10 @@ const DEFAULT_KEY = "default"
 // The 2nd-level key in the JSON for the recursive resolver addresses
 const RECURSE_KEY = "recurse"
 
+// Maximum recursion when resolving CNAMEs
+const MAX_DEPTH = 10
+
+// Recursive servers
 func (answers *Answers) Recursers(clientIp string) []string {
 	var hosts []string
 	more := answers.recursersFor(clientIp)
@@ -40,18 +45,32 @@ func (answers *Answers) recursersFor(clientIp string) []string {
 	return hosts
 }
 
-func (answers *Answers) Addresses(clientIp string, fqdn string, cnameParents []dns.RR, depth int) (records []dns.RR, ok bool) {
+// Search suffixes
+func (answers *Answers) SearchSuffixes(clientIp string) []string {
+	var hosts []string
+	client, ok := (*answers)[clientIp]
+	if ok {
+		if ok && len(client.Search) > 0 {
+			hosts = client.Search
+		}
+	}
+
+	return hosts
+}
+
+func (answers *Answers) Addresses(clientIp string, fqdn string, cnameParents []dns.RR, depth int, searches []string) (records []dns.RR, ok bool) {
 	fqdn = dns.Fqdn(fqdn)
+
 	log.WithFields(log.Fields{"fqdn": fqdn, "client": clientIp, "depth": depth}).Debug("Trying to resolve addresses")
 
 	// Limit recursing for non-obvious loops
-	if len(cnameParents) >= 10 {
+	if len(cnameParents) >= MAX_DEPTH {
 		log.WithFields(log.Fields{"fqdn": fqdn, "client": clientIp}).Warn("Followed CNAME too many times ", cnameParents)
 		return nil, false
 	}
 
 	// Look for a CNAME entry
-	result, ok := answers.Matching(dns.TypeCNAME, clientIp, fqdn)
+	result, ok := answers.MatchingAny(dns.TypeCNAME, clientIp, fqdn, searches)
 	if ok && len(result) > 0 {
 		cname := result[0].(*dns.CNAME)
 		log.WithFields(log.Fields{"fqdn": fqdn, "client": clientIp}).Debug("Matched CNAME ", cname.Target)
@@ -63,7 +82,7 @@ func (answers *Answers) Addresses(clientIp string, fqdn string, cnameParents []d
 		}
 
 		// Recurse to find the eventual A for this CNAME
-		children, ok := answers.Addresses(clientIp, dns.Fqdn(cname.Target), append(cnameParents, cname), depth+1)
+		children, ok := answers.Addresses(clientIp, dns.Fqdn(cname.Target), append(cnameParents, cname), depth+1, searches)
 		if ok && len(children) > 0 {
 			log.WithFields(log.Fields{"fqdn": fqdn, "target": cname.Target, "client": clientIp}).Debug("Resolved CNAME ", children)
 			records = append(records, cname)
@@ -73,7 +92,7 @@ func (answers *Answers) Addresses(clientIp string, fqdn string, cnameParents []d
 	}
 
 	// Look for an A entry
-	result, ok = answers.Matching(dns.TypeA, clientIp, fqdn)
+	result, ok = answers.MatchingAny(dns.TypeA, clientIp, fqdn, searches)
 	if ok && len(result) > 0 {
 		log.WithFields(log.Fields{"fqdn": fqdn, "client": clientIp}).Debug("Matched A ", result)
 		shuffle(&result)
@@ -82,7 +101,8 @@ func (answers *Answers) Addresses(clientIp string, fqdn string, cnameParents []d
 
 	// Try the default section of the config
 	if clientIp != DEFAULT_KEY {
-		return answers.Addresses(DEFAULT_KEY, fqdn, cnameParents, depth+1)
+		log.WithFields(log.Fields{"fqdn": fqdn, "client": clientIp}).Debug("Trying defaults")
+		return answers.Addresses(DEFAULT_KEY, fqdn, cnameParents, depth+1, searches)
 	}
 
 	// When resolving CNAMES, check recursive server
@@ -97,6 +117,28 @@ func (answers *Answers) Addresses(clientIp string, fqdn string, cnameParents []d
 	}
 
 	log.WithFields(log.Fields{"fqdn": fqdn, "client": clientIp}).Debug("Did not match anything")
+	return nil, false
+}
+
+func (answers *Answers) MatchingAny(qtype uint16, clientIp string, label string, searches []string) (records []dns.RR, ok bool) {
+	records, ok = answers.Matching(qtype, clientIp, label)
+	if ok {
+		log.WithFields(log.Fields{"fqdn": label, "client": clientIp}).Debug("Matched exact FQDN")
+		return
+	}
+
+	if searches != nil && len(searches) > 0 {
+		for _, suffix := range searches {
+			newFqdn := strings.TrimRight(label, ".") + "." + strings.TrimRight(suffix, ".") + "."
+
+			records, ok = answers.Matching(qtype, clientIp, newFqdn)
+			if ok {
+				log.WithFields(log.Fields{"fqdn": newFqdn, "client": clientIp}).Debug("Matched alternate suffix")
+				return
+			}
+		}
+	}
+
 	return nil, false
 }
 

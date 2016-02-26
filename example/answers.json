@@ -7,7 +7,14 @@
       "mysql.": {"answer": ["172.16.2.3"], "ttl": 60},
       "web.": {"answer": ["172.16.2.4","172.16.2.5","172.16.2.6"], "ttl": 14},
 
-      "chain4.": {"answer": ["1.2.3.4"]}
+      "chain4.": {"answer": ["1.2.3.4"]},
+
+      "a.rancher.internal.": {"answer": ["1.2.3.4"]},
+      "b.rancher.internal.": {"answer": ["1.2.3.5"]},
+      "c.x.rancher.internal.": {"answer": ["1.2.3.6"]},
+      "c.y.rancher.internal.": {"answer": ["1.2.3.7"]},
+      "d.x.rancher.internal.": {"answer": ["1.2.3.8"]},
+      "d.y.rancher.internal.": {"answer": ["1.2.3.9"]}
     },
 
     "cname": {
@@ -42,7 +49,10 @@
       "extchain2.": {"answer": "extchain3."},
       "extchain3.": {"answer": "rancher.com."},
 
-      "extcname.": {"answer": "cdn.rancher.io."}
+      "extcname.": {"answer": "cdn.rancher.io."},
+
+      "e.x.rancher.internal.": {"answer": "d.x.rancher.internal."},
+      "e.y.rancher.internal.": {"answer": "d.y.rancher.internal."}
     },
 
     "ptr": {
@@ -64,7 +74,8 @@
   },
 
   "127.0.0.1": {
-    "recurse": ["127.0.0.1"],
+    "recurse": ["8.8.4.4"],
+    "search": ["x.rancher.internal","rancher.internal"],
 
     "a": {
       "mysql.": {"answer": ["127.0.0.3"]},
@@ -74,7 +85,10 @@
     "cname": {
       "things.": {"answer": "mysql."},
       "stuff.": {"answer": "web."},
-      "external.": {"answer": "apple.com."}
+      "external.": {"answer": "apple.com."},
+
+      "d.x.rancher.internal.": {"answer": "d.y.rancher.internal."},
+      "g.x.rancher.internal.": {"answer": "d.x."}
     }
   },
 

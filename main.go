@@ -144,6 +144,9 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 		return
 	}
 
+	// Extra suffixes to search
+	searches := answers.SearchSuffixes(clientIp)
+
 	proto := "UDP"
 	if isTcp(w) {
 		proto = "TCP"
@@ -153,7 +156,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 
 	// A records may return CNAME answer(s) plus A answer(s)
 	if question.Qtype == dns.TypeA {
-		found, ok := answers.Addresses(clientIp, fqdn, nil, 1)
+		found, ok := answers.Addresses(clientIp, fqdn, nil, 1, searches)
 		if ok && len(found) > 0 {
 			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn, "answers": len(found)}).Debug("Answered locally")
 			m.Answer = found
@@ -165,7 +168,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 		keys := []string{clientIp, DEFAULT_KEY}
 		for _, key := range keys {
 			// Client-specific answers
-			found, ok := answers.Matching(question.Qtype, key, fqdn)
+			found, ok := answers.MatchingAny(question.Qtype, key, fqdn, searches)
 			if ok {
 				log.WithFields(log.Fields{"client": key, "type": rrString, "question": fqdn, "answers": len(found)}).Debug("Answered from config for ", key)
 				m.Answer = found
