@@ -34,6 +34,11 @@ Option      | Default        | Description
     // DNS servers to recurse to when answers are not found locally
     "recurse": ["8.8.4.4:53", "8.8.8.8"],
 
+    // Search suffixes to try to find a match inside the answers file.
+    // e.g. a query for "mysql" will try "mysql.", "mysql.x.rancher.internal", and "mysql.rancher.internal"
+    // before moving on to the default key or recursive lookups.
+    "search": ["x.rancher.internal","rancher.internal"],
+
     // A records
     "a": {
       // FQDN => { answer: array of IPs, ttl: TTL for this specific answer }

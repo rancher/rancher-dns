@@ -127,14 +127,21 @@ func (answers *Answers) MatchingAny(qtype uint16, clientIp string, label string,
 		return
 	}
 
-	if searches != nil && len(searches) > 0 {
-		for _, suffix := range searches {
-			newFqdn := strings.TrimRight(label, ".") + "." + strings.TrimRight(suffix, ".") + "."
+	base := strings.TrimRight(label, ".")
 
-			records, ok = answers.Matching(qtype, clientIp, newFqdn)
-			if ok {
-				log.WithFields(log.Fields{"fqdn": newFqdn, "client": clientIp}).Debug("Matched alternate suffix")
-				return
+	// If the label has no dots, try additional search suffixes
+	// Searching suffixes when there is a dot is dangerous because what should be a recursive entry for
+	// e.g. "google.com" could erroneously match a service "google "in stack "com"
+	if strings.Index(base, ".") == -1 {
+		if searches != nil && len(searches) > 0 {
+			for _, suffix := range searches {
+				newFqdn := base + "." + strings.TrimRight(suffix, ".") + "."
+
+				records, ok = answers.Matching(qtype, clientIp, newFqdn)
+				if ok {
+					log.WithFields(log.Fields{"fqdn": newFqdn, "client": clientIp}).Debug("Matched alternate suffix")
+					return
+				}
 			}
 		}
 	}
