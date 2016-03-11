@@ -145,7 +145,7 @@ func (answers *Answers) Matching(qtype uint16, clientIp string, label string) (r
 }
 
 func (answers *Answers) MatchingSearch(qtype uint16, clientIp string, label string, searches []string) (records []dns.RR, ok bool) {
-	records, ok = answers.MatchingExact(qtype, clientIp, label)
+	records, ok = answers.MatchingExact(qtype, clientIp, label, label)
 	if ok {
 		log.WithFields(log.Fields{"fqdn": label, "client": clientIp}).Debug("Matched exact FQDN")
 		return
@@ -159,7 +159,7 @@ func (answers *Answers) MatchingSearch(qtype uint16, clientIp string, label stri
 				newFqdn := base + "." + strings.TrimRight(suffix, ".") + "."
 				log.WithFields(log.Fields{"fqdn": newFqdn, "client": clientIp}).Debug("Trying alternate suffix")
 
-				records, ok = answers.MatchingExact(qtype, clientIp, newFqdn)
+				records, ok = answers.MatchingExact(qtype, clientIp, newFqdn, label)
 				if ok {
 					log.WithFields(log.Fields{"fqdn": newFqdn, "client": clientIp}).Debug("Matched alternate suffix")
 					return
@@ -171,7 +171,7 @@ func (answers *Answers) MatchingSearch(qtype uint16, clientIp string, label stri
 	return nil, false
 }
 
-func (answers *Answers) MatchingExact(qtype uint16, clientIp string, fqdn string) (records []dns.RR, ok bool) {
+func (answers *Answers) MatchingExact(qtype uint16, clientIp string, fqdn string, answerFqdn string) (records []dns.RR, ok bool) {
 	client, ok := (*answers)[clientIp]
 	if ok {
 		switch qtype {
@@ -185,7 +185,7 @@ func (answers *Answers) MatchingExact(qtype uint16, clientIp string, fqdn string
 				}
 
 				for i := 0; i < len(res.Answer); i++ {
-					hdr := dns.RR_Header{Name: fqdn, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: ttl}
+					hdr := dns.RR_Header{Name: answerFqdn, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: ttl}
 					ip := net.ParseIP(res.Answer[i])
 					record := &dns.A{Hdr: hdr, A: ip}
 					records = append(records, record)
@@ -203,7 +203,7 @@ func (answers *Answers) MatchingExact(qtype uint16, clientIp string, fqdn string
 			}
 
 			if ok {
-				hdr := dns.RR_Header{Name: fqdn, Rrtype: dns.TypeCNAME, Class: dns.ClassINET, Ttl: ttl}
+				hdr := dns.RR_Header{Name: answerFqdn, Rrtype: dns.TypeCNAME, Class: dns.ClassINET, Ttl: ttl}
 				record := &dns.CNAME{Hdr: hdr, Target: res.Answer}
 				records = append(records, record)
 			}
@@ -217,7 +217,7 @@ func (answers *Answers) MatchingExact(qtype uint16, clientIp string, fqdn string
 			}
 
 			if ok {
-				hdr := dns.RR_Header{Name: fqdn, Rrtype: dns.TypePTR, Class: dns.ClassINET, Ttl: ttl}
+				hdr := dns.RR_Header{Name: answerFqdn, Rrtype: dns.TypePTR, Class: dns.ClassINET, Ttl: ttl}
 				record := &dns.PTR{Hdr: hdr, Ptr: res.Answer}
 				records = append(records, record)
 			}
@@ -232,7 +232,7 @@ func (answers *Answers) MatchingExact(qtype uint16, clientIp string, fqdn string
 
 			if ok {
 				for i := 0; i < len(res.Answer); i++ {
-					hdr := dns.RR_Header{Name: fqdn, Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: ttl}
+					hdr := dns.RR_Header{Name: answerFqdn, Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: ttl}
 					str := res.Answer[i]
 					if len(str) > 255 {
 						log.WithFields(log.Fields{"qtype": "TXT", "client": clientIp, "fqdn": fqdn}).Warn("TXT record too long: ", str)
