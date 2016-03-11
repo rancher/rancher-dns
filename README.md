@@ -24,6 +24,7 @@ Option      | Default        | Description
 `--listen`  | 0.0.0.0:53     | IP address and port to listen on (TCP &amp; UDP)
 `--answers` | ./answers.json | Path to a JSON file with client-specific answers
 `--ttl`     | 600            | Default TTL for local responses that are returned
+`--ndots`   | 0 (unlimited)  | Only recurse if there are less than this number of dots
 `--log`     | *none*         | Output log info to a file path instead of stdout
 `--pid-file`| *none*         | Write the server PID to a file path on startup
 
@@ -35,14 +36,16 @@ Option      | Default        | Description
     "recurse": ["8.8.4.4:53", "8.8.8.8"],
 
     // Search suffixes to try to find a match inside the answers file.
-    // e.g. a query for "mysql" will try "mysql.", "mysql.x.rancher.internal", and "mysql.rancher.internal"
-    // before moving on to the default key or recursive lookups.
+    // For queries consisting of a single label, e.g. "mysql.", rancher-dns will
+    // try appending these suffixes one a a time and looking for an answer
+    // ("mysql.", "mysql.x.rancher.internal", and "mysql.rancher.internal")
+    // before moving on to the "default" key or recursive lookup.
     "search": ["x.rancher.internal","rancher.internal"],
 
     // A records
     "a": {
       // FQDN => { answer: array of IPs, ttl: TTL for this specific answer }
-      // Note: Key must be fully qualified (ending in dot)
+      // Note: Key must be fully-qualified (ending in dot) and all lowercase
       "mysql.": {"answer": ["10.1.2.3"], "ttl": 42},
       "web.": {"answer": ["10.1.2.4","10.1.2.5","10.1.2.6"]}
     },
@@ -50,7 +53,7 @@ Option      | Default        | Description
     // CNAME records
     "cname": {
       // FQDN => { answer: a single FQDN, ttl: TTL for this specific answer }
-      // Note: Key & Answer must be fully qualified (ending in dot)
+      // Note: Key & Answer must be fully-qualified (ending in dot) and all lowercase
       "www.": {"answer": "web.", "ttl": 42}
     },
 
@@ -59,6 +62,7 @@ Option      | Default        | Description
       // IP Address => { answer: a single FQDN, ttl: TTL for this specific answer }
       // or
       // FQDN (with backwards octets) => { answer: a single FQDN, ttl: TTL for this specific answer }
+      // Note: Key must be fully-qualified (ending in dot) and all lowercase
       "10.42.1.2": {"answer": "mycontainer.rancher.internal."},
       "3.1.42.10.in-addr.apra.": {"answer": "anothercontainer.rancher.internal."},
     },
@@ -66,7 +70,8 @@ Option      | Default        | Description
     // TXT records
     "txt": {
       // FQDN => { answer: array of strings, ttl: TTL for this specific answer }
-      // Each string must be < 255 chars.
+      // Note: Key must be fully-qualified (ending in dot) and all lowercase
+      // Each individual answer string must be < 255 chars.
       "example.com.": {"ttl": 43, "answer": [
         "v=spf1 ip4:192.168.0.0/16 ~all"
       ]}

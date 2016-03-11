@@ -152,11 +152,8 @@ func (answers *Answers) MatchingSearch(qtype uint16, clientIp string, label stri
 	}
 
 	base := strings.TrimRight(label, ".")
-
-	// If the label has no dots, try additional search suffixes
-	// Searching suffixes when there is a dot is dangerous because what should be a recursive entry for
-	// e.g. "google.com" could erroneously match a service "google "in stack "com"
-	if strings.Index(base, ".") == -1 {
+	limit := int(*ndots)
+	if limit == 0 || strings.Count(base, ".") < limit {
 		if searches != nil && len(searches) > 0 {
 			for _, suffix := range searches {
 				newFqdn := base + "." + strings.TrimRight(suffix, ".") + "."
