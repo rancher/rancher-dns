@@ -7,7 +7,7 @@
       "mysql.": {"answer": ["172.16.2.3"], "ttl": 60},
       "web.": {"answer": ["172.16.2.4","172.16.2.5","172.16.2.6"], "ttl": 14},
 
-      "chain4.": {"answer": ["1.2.3.4"]},
+      "chain4.": {"answer": ["1.2.3.4","2.3.4.5"]},
 
       "a.rancher.internal.": {"answer": ["1.2.3.4"]},
       "b.rancher.internal.": {"answer": ["1.2.3.5"]},
@@ -88,7 +88,10 @@
       "external.": {"answer": "apple.com."},
 
       "d.x.rancher.internal.": {"answer": "d.y.rancher.internal."},
-      "g.x.rancher.internal.": {"answer": "d.x."}
+      "g.x.rancher.internal.": {"answer": "d.x."},
+
+      "parent.x.rancher.internal.": {"answer": "child.x."},
+      "child.x.rancher.internal.": {"answer": "chain."}
     }
   },
 
