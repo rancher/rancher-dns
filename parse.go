@@ -1,12 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"os"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
+	yaml "gopkg.in/yaml.v2"
 )
 
 func ParseAnswers(path string) (out Answers, err error) {
@@ -19,13 +19,12 @@ func ParseAnswers(path string) (out Answers, err error) {
 	}
 
 	out = make(Answers)
-	err = json.Unmarshal(data, &out)
-	if err == nil {
-		ConvertPtrIps(&out)
-		return out, nil
-	} else {
+	if yaml.Unmarshal(data, &out); err != nil {
 		return nil, err
 	}
+
+	ConvertPtrIps(&out)
+	return out, nil
 }
 
 func ConvertPtrIps(answers *Answers) {
