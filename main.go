@@ -19,7 +19,7 @@ import (
 var (
 	debug       = flag.Bool("debug", false, "Debug")
 	listen      = flag.String("listen", ":53", "Address to listen to (TCP and UDP)")
-	answersFile = flag.String("answers", "./answers.json", "File containing the answers to respond with")
+	answersFile = flag.String("answers", "./answers.yaml", "File containing the answers to respond with")
 	defaultTtl  = flag.Uint("ttl", 600, "TTL for answers")
 	ndots       = flag.Uint("ndots", 0, "Queries with more than this number of dots will not use search paths")
 	logFile     = flag.String("log", "", "Log file")
@@ -120,7 +120,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 	question := req.Question[0]
 	rrString := dns.Type(question.Qtype).String()
 
-	// We are assuming the JSON config has all names as lower case
+	// We are assuming the config has all names as lower case
 	fqdn := strings.ToLower(question.Name)
 
 	// Internets only

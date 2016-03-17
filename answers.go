@@ -9,10 +9,10 @@ import (
 	"github.com/miekg/dns"
 )
 
-// The top-level key in the JSON for the default (not client-specific answers)
+// The top-level key in the config for the default (not client-specific answers)
 const DEFAULT_KEY = "default"
 
-// The 2nd-level key in the JSON for the recursive resolver addresses
+// The 2nd-level key in the config for the recursive resolver addresses
 const RECURSE_KEY = "recurse"
 
 // Maximum recursion when resolving CNAMEs
