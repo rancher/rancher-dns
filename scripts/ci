@@ -1,11 +1,9 @@
 #!/bin/bash
-
 set -e
 
-cd $(dirname $0)/..
+cd $(dirname $0)
 
-./scripts/clean
-./scripts/bootstrap
-./scripts/build
-./scripts/test
-./scripts/package
+./build
+./test
+./validate
+./package
