@@ -1,20 +1,14 @@
 #!/bin/bash
+set -e
 
-cd $(dirname $0)/..
+source $(dirname $0)/version
 
-CONTENT=$(</proc/sys/kernel/random/uuid)
+cd $(dirname $0)/../package
 
-rm -rf dist/artifacts
+TAG=${TAG:-${VERSION}}
+REPO=${REPO:-rancher}
 
-mkdir -p build/${CONTENT}
-mkdir -p dist/artifacts
+cp ../bin/rancher-dns .
+docker build -t ${REPO}/rancher-dns:${TAG} .
 
-cp -rf apply.sh bin content build/${CONTENT}
-
-cd build
-
-sha1sum -b $(find ${CONTENT} -type f) > ${CONTENT}/SHA1SUMS
-sha1sum ${CONTENT}/SHA1SUMS > ${CONTENT}/SHA1SUMSSUM
-
-tar czf ../dist/artifacts/rancher-dns.tar.gz ${CONTENT}
-echo Created dist/artifacts/rancher-dns.tar.gz
+echo Built ${REPO}/rancher-dns:${TAG}

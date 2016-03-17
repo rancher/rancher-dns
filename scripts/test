@@ -1,23 +1,10 @@
 #!/bin/bash
-
-set -e
+set -e 
 
 cd $(dirname $0)/..
 
-. ./scripts/common_functions
+echo Running tests
 
-set_project_vars
+PACKAGES=". $(find -name '*.go' | xargs -I{} dirname {} |  cut -f2 -d/ | sort -u | grep -Ev '(^\.$|.git|.trash-cache|vendor|bin)' | sed -e 's!^!./!' -e 's!$!/...!')"
 
-go test $(go list ./... | grep -v /vendor)
-
-result=$(find . -name "*.go" | grep -v ./vendor | xargs gofmt -l)
-if [ -n "$result" ]; then
-    echo "${#result[@]} files failed gofmt check:"
-fi
-for i in $result; do
-    echo $i
-done
-
-[ -n "$result" ] && exit 1
-
-echo OK
+go test -race -cover -tags=test ${PACKAGES}
