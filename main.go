@@ -14,18 +14,21 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/miekg/dns"
+	"github.com/skynetservices/skydns/cache"
 )
 
 var (
-	debug       = flag.Bool("debug", false, "Debug")
-	listen      = flag.String("listen", ":53", "Address to listen to (TCP and UDP)")
-	answersFile = flag.String("answers", "./answers.yaml", "File containing the answers to respond with")
-	defaultTtl  = flag.Uint("ttl", 600, "TTL for answers")
-	ndots       = flag.Uint("ndots", 0, "Queries with more than this number of dots will not use search paths")
-	logFile     = flag.String("log", "", "Log file")
-	pidFile     = flag.String("pid-file", "", "PID to write to")
+	debug         = flag.Bool("debug", false, "Debug")
+	listen        = flag.String("listen", ":53", "Address to listen to (TCP and UDP)")
+	answersFile   = flag.String("answers", "./answers.yaml", "File containing the answers to respond with")
+	defaultTtl    = flag.Uint("ttl", 600, "TTL for answers")
+	ndots         = flag.Uint("ndots", 0, "Queries with more than this number of dots will not use search paths")
+	cacheCapacity = flag.Uint("cache-capacity", 1000, "Recursive cache capacity")
+	logFile       = flag.String("log", "", "Log file")
+	pidFile       = flag.String("pid-file", "", "PID to write to")
 
-	answers Answers
+	answers        Answers
+	recursiveCache *cache.Cache
 )
 
 func main() {
@@ -43,6 +46,8 @@ func main() {
 
 	udpServer := &dns.Server{Addr: *listen, Net: "udp"}
 	tcpServer := &dns.Server{Addr: *listen, Net: "tcp"}
+
+	recursiveCache = cache.New(int(*cacheCapacity), int(*defaultTtl))
 
 	dns.HandleFunc(".", route)
 
@@ -178,6 +183,13 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 		log.Debug("No match found in config")
 	}
 
+	// Check if response is in recursive cache
+	if msg := recursiveCache.Hit(req.Question[0], false, false, req.MsgHdr.Id); msg != nil {
+		Respond(w, req, msg)
+		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent cached recursive response")
+		return
+	}
+
 	// Phone a friend - Forward original query
 	msg, err := ResolveTryAll(req, answers.Recursers(clientIp))
 	if err == nil {
@@ -194,6 +206,11 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 
 		Respond(w, req, msg)
 		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent recursive response")
+
+		// Cache response
+		key := cache.Key(req.Question[0], false, false)
+		recursiveCache.InsertMessage(key, msg)
+
 		return
 	}
 
