@@ -33,3 +33,7 @@ func addToClientSpecificCache(clientIp string, req, msg *dns.Msg) {
 	key := cache.Key(req.Question[0], false, false)
 	clientCache.InsertMessage(key, msg)
 }
+
+func clearClientSpecificCaches() {
+	clientSpecificCaches = make(map[string]*cache.Cache)
+}

@@ -86,6 +86,7 @@ func parseFlags() {
 func loadAnswers() (err error) {
 	temp, err := ParseAnswers(*answersFile)
 	if err == nil {
+		clearClientSpecificCaches()
 		answers = temp
 		log.Info("Loaded answers for ", len(answers), " IPs")
 	} else {
