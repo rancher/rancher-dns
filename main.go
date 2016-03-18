@@ -14,18 +14,22 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/miekg/dns"
+	"github.com/skynetservices/skydns/cache"
 )
 
 var (
-	debug       = flag.Bool("debug", false, "Debug")
-	listen      = flag.String("listen", ":53", "Address to listen to (TCP and UDP)")
-	answersFile = flag.String("answers", "./answers.yaml", "File containing the answers to respond with")
-	defaultTtl  = flag.Uint("ttl", 600, "TTL for answers")
-	ndots       = flag.Uint("ndots", 0, "Queries with more than this number of dots will not use search paths")
-	logFile     = flag.String("log", "", "Log file")
-	pidFile     = flag.String("pid-file", "", "PID to write to")
+	debug         = flag.Bool("debug", false, "Debug")
+	listen        = flag.String("listen", ":53", "Address to listen to (TCP and UDP)")
+	answersFile   = flag.String("answers", "./answers.yaml", "File containing the answers to respond with")
+	defaultTtl    = flag.Uint("ttl", 600, "TTL for answers")
+	ndots         = flag.Uint("ndots", 0, "Queries with more than this number of dots will not use search paths")
+	cacheCapacity = flag.Uint("cache-capacity", 1000, "Cache capacity")
+	logFile       = flag.String("log", "", "Log file")
+	pidFile       = flag.String("pid-file", "", "PID to write to")
 
-	answers Answers
+	answers              Answers
+	globalCache          *cache.Cache
+	clientSpecificCaches map[string]*cache.Cache
 )
 
 func main() {
@@ -43,6 +47,9 @@ func main() {
 
 	udpServer := &dns.Server{Addr: *listen, Net: "udp"}
 	tcpServer := &dns.Server{Addr: *listen, Net: "tcp"}
+
+	globalCache = cache.New(int(*cacheCapacity), int(*defaultTtl))
+	clientSpecificCaches = make(map[string]*cache.Cache)
 
 	dns.HandleFunc(".", route)
 
@@ -79,6 +86,7 @@ func parseFlags() {
 func loadAnswers() (err error) {
 	temp, err := ParseAnswers(*answersFile)
 	if err == nil {
+		clearClientSpecificCaches()
 		answers = temp
 		log.Info("Loaded answers for ", len(answers), " IPs")
 	} else {
@@ -152,12 +160,25 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 
 	log.WithFields(log.Fields{"question": fqdn, "type": rrString, "client": clientIp, "proto": proto}).Debug("Request")
 
+	if msg := clientSpecificCacheHit(clientIp, req); msg != nil {
+		Respond(w, req, msg)
+		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent client-specific cached response")
+		return
+	}
+
+	if msg := globalCacheHit(req); msg != nil {
+		Respond(w, req, msg)
+		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent globally cached response")
+		return
+	}
+
 	// A records may return CNAME answer(s) plus A answer(s)
 	if question.Qtype == dns.TypeA {
 		found, ok := answers.Addresses(clientIp, fqdn, nil, 1)
 		if ok && len(found) > 0 {
 			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn, "answers": len(found)}).Debug("Answered locally")
 			m.Answer = found
+			addToClientSpecificCache(clientIp, req, m)
 			Respond(w, req, m)
 			return
 		}
@@ -170,6 +191,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 			if ok {
 				log.WithFields(log.Fields{"client": key, "type": rrString, "question": fqdn, "answers": len(found)}).Debug("Answered from config for ", key)
 				m.Answer = found
+				addToClientSpecificCache(clientIp, req, m)
 				Respond(w, req, m)
 				return
 			}
@@ -191,6 +213,8 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Rewrote AAAA NXDOMAIN to NOERROR")
 			msg.Rcode = dns.RcodeSuccess
 		}
+
+		addToGlobalCache(req, msg)
 
 		Respond(w, req, msg)
 		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent recursive response")

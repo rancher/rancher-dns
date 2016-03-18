@@ -8,3 +8,6 @@ import:
 - package: gopkg.in/yaml.v2
   version: ca8f6aacaa4072fe5d27388b07162941cd750c65
   repo:    https://github.com/rancher/yaml
+
+- package: github.com/skynetservices/skydns
+  version: f7b6fb74bcfab300b4e7e0e27b1fe6c0ed555f78
