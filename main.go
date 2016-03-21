@@ -2,9 +2,11 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
@@ -13,13 +15,16 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/gorilla/mux"
 	"github.com/miekg/dns"
 	"github.com/skynetservices/skydns/cache"
 )
 
 var (
+	showVersion   = flag.Bool("version", false, "Show version")
 	debug         = flag.Bool("debug", false, "Debug")
 	listen        = flag.String("listen", ":53", "Address to listen to (TCP and UDP)")
+	listenReload  = flag.String("listenReload", "127.0.0.1:8113", "Address to listen to for reload requests (TCP)")
 	answersFile   = flag.String("answers", "./answers.yaml", "File containing the answers to respond with")
 	defaultTtl    = flag.Uint("ttl", 600, "TTL for answers")
 	ndots         = flag.Uint("ndots", 0, "Queries with more than this number of dots will not use search paths")
@@ -30,16 +35,28 @@ var (
 	answers              Answers
 	globalCache          *cache.Cache
 	clientSpecificCaches map[string]*cache.Cache
+	VERSION              string
+	wantRevision         = 1
+	loadedRevision       = 0
+	loading              = false
+	ticker               = time.NewTicker(1 * time.Second)
 )
 
 func main() {
-	log.Info("Starting rancher-dns")
 	parseFlags()
+
+	if *showVersion {
+		fmt.Printf("%s\n", VERSION)
+		os.Exit(0)
+	}
+
+	log.Infof("Starting rancher-dns %s", VERSION)
 	err := loadAnswers()
 	if err != nil {
 		log.Fatal("Cannot startup without a valid Answers file")
 	}
 	watchSignals()
+	watchHttp()
 
 	seed := time.Now().UTC().UnixNano()
 	log.Debug("Set random seed to ", seed)
@@ -84,11 +101,16 @@ func parseFlags() {
 }
 
 func loadAnswers() (err error) {
+	log.Debug("Loading answers")
+	loading = true
+	revision := wantRevision
 	temp, err := ParseAnswers(*answersFile)
 	if err == nil {
 		clearClientSpecificCaches()
 		answers = temp
-		log.Info("Loaded answers for ", len(answers), " IPs")
+		loadedRevision = revision
+		loading = false
+		log.Infof("Loaded answers revision %d for %d IPs", revision, len(answers))
 	} else {
 		log.Errorf("Failed to load answers: %v", err)
 	}
@@ -102,10 +124,48 @@ func watchSignals() {
 
 	go func() {
 		for _ = range c {
-			log.Info("Received HUP signal, reloading answers")
-			loadAnswers()
+			log.Info("Received HUP signal")
+			wantRevision += 1
 		}
 	}()
+
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				//log.Info("Ping")
+				if !loading && loadedRevision < wantRevision {
+					loadAnswers()
+				}
+			}
+		}
+	}()
+}
+
+func watchHttp() {
+	reloadRouter := mux.NewRouter()
+	reloadRouter.HandleFunc("/favicon.ico", http.NotFound)
+	reloadRouter.HandleFunc("/v1/reload", httpReload).Methods("POST")
+
+	log.Info("Listening for Reload on ", *listenReload)
+	go http.ListenAndServe(*listenReload, reloadRouter)
+}
+
+func httpReload(w http.ResponseWriter, req *http.Request) {
+	wantRevision += 1
+	waitFor := wantRevision
+	log.Debugf("Received HTTP reload request, wait for %d, ", waitFor)
+
+	for {
+		select {
+		case <-time.After(100 * time.Millisecond):
+			//log.Debugf("Now at %d, waiting for %d", loadedRevision, waitFor)
+			if loadedRevision >= waitFor {
+				fmt.Fprintf(w, "OK %d\r\n", loadedRevision)
+				return
+			}
+		}
+	}
 }
 
 func route(w dns.ResponseWriter, req *dns.Msg) {
