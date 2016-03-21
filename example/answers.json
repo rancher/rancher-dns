@@ -1,6 +1,7 @@
 {
   "default": {
     "recurse": ["8.8.4.4","8.8.8.8:53"],
+    "authoritative": ["something.else.","rancher.internal"],
 
     "a": {
       "app.": {"answer": ["10.1.2.3"]},

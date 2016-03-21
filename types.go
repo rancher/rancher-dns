@@ -21,12 +21,13 @@ type RecordTxt struct {
 }
 
 type ClientAnswers struct {
-	Search  []string
-	Recurse []string
-	A       map[string]RecordA
-	Cname   map[string]RecordCname
-	Ptr     map[string]RecordPtr
-	Txt     map[string]RecordTxt
+	Search        []string
+	Recurse       []string
+	Authoritative []string
+	A             map[string]RecordA
+	Cname         map[string]RecordCname
+	Ptr           map[string]RecordPtr
+	Txt           map[string]RecordTxt
 }
 
 type Answers map[string]ClientAnswers
