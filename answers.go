@@ -47,15 +47,29 @@ func (answers *Answers) recursersFor(clientIp string) []string {
 
 // Search suffixes
 func (answers *Answers) SearchSuffixes(clientIp string) []string {
-	var hosts []string
+	var suffixes []string
 	client, ok := (*answers)[clientIp]
 	if ok {
 		if ok && len(client.Search) > 0 {
-			hosts = client.Search
+			suffixes = client.Search
 		}
 	}
 
-	return hosts
+	return suffixes
+}
+
+// Authoritative suffixes
+func (answers *Answers) AuthoritativeSuffixes() []string {
+	var suffixes []string
+	client, ok := (*answers)[DEFAULT_KEY]
+	if ok && len(client.Authoritative) > 0 {
+		for _, suffix := range client.Authoritative {
+			withDots := "." + strings.Trim(suffix, ".") + "."
+			suffixes = append(suffixes, withDots)
+		}
+	}
+
+	return suffixes
 }
 
 func (answers *Answers) Addresses(clientIp string, fqdn string, cnameParents []dns.RR, depth int) (records []dns.RR, ok bool) {
@@ -117,7 +131,22 @@ func (answers *Answers) Addresses(clientIp string, fqdn string, cnameParents []d
 }
 
 func (answers *Answers) Matching(qtype uint16, clientIp string, label string) (records []dns.RR, ok bool) {
-	clientSearches := answers.SearchSuffixes(clientIp)
+	authoritativeFor := answers.AuthoritativeSuffixes()
+	authoritative := false
+	for _, suffix := range authoritativeFor {
+		if strings.HasSuffix(label, suffix) {
+			authoritative = true
+			break
+		}
+	}
+
+	// If we are authoritative for a suffix the label has, there's no point trying alternate search suffixes
+	var clientSearches []string
+	if authoritative {
+		clientSearches = []string{}
+	} else {
+		clientSearches = answers.SearchSuffixes(clientIp)
+	}
 
 	// Client answers, client search
 	log.WithFields(log.Fields{"label": label, "client": clientIp}).Debug("Trying client answers, client search")
