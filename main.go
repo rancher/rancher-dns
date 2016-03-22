@@ -37,8 +37,8 @@ var (
 	globalCache          *cache.Cache
 	clientSpecificCaches map[string]*cache.Cache
 	VERSION              string
-	loading              = false
 	reloadChan           = make(chan chan error)
+	serial               = uint32(1)
 )
 
 func main() {
@@ -101,12 +101,10 @@ func parseFlags() {
 
 func loadAnswers() (err error) {
 	log.Debug("Loading answers")
-	loading = true
 	temp, err := ParseAnswers(*answersFile)
 	if err == nil {
 		clearClientSpecificCaches()
 		answers = temp
-		loading = false
 		log.Infof("Loaded answers")
 	} else {
 		log.Errorf("Failed to load answers: %v", err)
@@ -248,6 +246,23 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 		}
 
 		log.Debug("No match found in config")
+	}
+
+	// If we are authoritative for a suffix the label has, there's no point trying the recursive DNS
+	authoritativeFor := answers.AuthoritativeSuffixes()
+	for _, suffix := range authoritativeFor {
+		if strings.HasSuffix(fqdn, suffix) {
+			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debugf("Not answered locally, but I am authoritative for %s", suffix)
+			m.Authoritative = true
+			m.RecursionAvailable = false
+			me := strings.TrimLeft(suffix, ".")
+			hdr := dns.RR_Header{Name: me, Rrtype: dns.TypeSOA, Class: dns.ClassINET, Ttl: uint32(*defaultTtl)}
+			serial++
+			record := &dns.SOA{Hdr: hdr, Ns: me, Mbox: me, Serial: serial, Refresh: 60, Retry: 10, Expire: 86400, Minttl: 1}
+			m.Ns = append(m.Ns, record)
+			Respond(w, req, m)
+			return
+		}
 	}
 
 	// Phone a friend - Forward original query
