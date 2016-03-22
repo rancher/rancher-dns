@@ -10,15 +10,16 @@ import (
 )
 
 func ParseAnswers(path string) (out Answers, err error) {
+	out = make(Answers)
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			log.Warn("Failed to find: ", path)
+			return out, nil
 		}
 		return nil, err
 	}
 
-	out = make(Answers)
 	if yaml.Unmarshal(data, &out); err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"net"
@@ -36,10 +37,8 @@ var (
 	globalCache          *cache.Cache
 	clientSpecificCaches map[string]*cache.Cache
 	VERSION              string
-	wantRevision         = 1
-	loadedRevision       = 0
 	loading              = false
-	ticker               = time.NewTicker(1 * time.Second)
+	reloadChan           = make(chan chan error)
 )
 
 func main() {
@@ -103,14 +102,12 @@ func parseFlags() {
 func loadAnswers() (err error) {
 	log.Debug("Loading answers")
 	loading = true
-	revision := wantRevision
 	temp, err := ParseAnswers(*answersFile)
 	if err == nil {
 		clearClientSpecificCaches()
 		answers = temp
-		loadedRevision = revision
 		loading = false
-		log.Infof("Loaded answers revision %d for %d IPs", revision, len(answers))
+		log.Infof("Loaded answers")
 	} else {
 		log.Errorf("Failed to load answers: %v", err)
 	}
@@ -125,18 +122,15 @@ func watchSignals() {
 	go func() {
 		for _ = range c {
 			log.Info("Received HUP signal")
-			wantRevision += 1
+			reloadChan <- nil
 		}
 	}()
 
 	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				//log.Info("Ping")
-				if !loading && loadedRevision < wantRevision {
-					loadAnswers()
-				}
+		for resp := range reloadChan {
+			err := loadAnswers()
+			if resp != nil {
+				resp <- err
 			}
 		}
 	}()
@@ -144,7 +138,6 @@ func watchSignals() {
 
 func watchHttp() {
 	reloadRouter := mux.NewRouter()
-	reloadRouter.HandleFunc("/favicon.ico", http.NotFound)
 	reloadRouter.HandleFunc("/v1/reload", httpReload).Methods("POST")
 
 	log.Info("Listening for Reload on ", *listenReload)
@@ -152,19 +145,16 @@ func watchHttp() {
 }
 
 func httpReload(w http.ResponseWriter, req *http.Request) {
-	wantRevision += 1
-	waitFor := wantRevision
-	log.Debugf("Received HTTP reload request, wait for %d, ", waitFor)
+	log.Debugf("Received HTTP reload request")
+	respChan := make(chan error)
+	reloadChan <- respChan
+	err := <-respChan
 
-	for {
-		select {
-		case <-time.After(100 * time.Millisecond):
-			//log.Debugf("Now at %d, waiting for %d", loadedRevision, waitFor)
-			if loadedRevision >= waitFor {
-				fmt.Fprintf(w, "OK %d\r\n", loadedRevision)
-				return
-			}
-		}
+	if err == nil {
+		io.WriteString(w, "OK")
+	} else {
+		w.WriteHeader(500)
+		io.WriteString(w, err.Error())
 	}
 }
 
