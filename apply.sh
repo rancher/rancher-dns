@@ -6,7 +6,8 @@ cd $(dirname $0)
 
 chmod +x bin/rancher-dns
 
-mkdir -p content-home
+mkdir -p content-home/etc/cattle/rancher-dns
+touch content-home/etc/cattle/rancher-dns/http-reload
 mv bin content-home
 
 stage_files
