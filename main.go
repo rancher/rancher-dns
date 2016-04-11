@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -33,12 +34,13 @@ var (
 	logFile       = flag.String("log", "", "Log file")
 	pidFile       = flag.String("pid-file", "", "PID to write to")
 
-	answers              Answers
-	globalCache          *cache.Cache
-	clientSpecificCaches map[string]*cache.Cache
-	VERSION              string
-	reloadChan           = make(chan chan error)
-	serial               = uint32(1)
+	answers                   Answers
+	globalCache               *cache.Cache
+	clientSpecificCaches      map[string]*cache.Cache
+	clientSpecificCachesMutex sync.RWMutex
+	VERSION                   string
+	reloadChan                = make(chan chan error)
+	serial                    = uint32(1)
 )
 
 func main() {
