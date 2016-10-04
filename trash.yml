@@ -17,3 +17,7 @@ import:
 
 - package: github.com/gorilla/context
   version: 1ea25387ff6f684839d82767c1733ff4d4d15d0a
+
+- package: github.com/rancher/go-rancher-metadata
+  version: fe8290579c593e58efb59d223764b12e3cfcfd57
+  repo: file:///Users/alena/go/src/github.com/rancher/go-rancher-metadata/.git
