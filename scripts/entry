@@ -5,7 +5,7 @@ trap "chown -R $DAPPER_UID:$DAPPER_GID ." exit
 
 mkdir -p bin dist
 if [ -e ./scripts/$1 ]; then
-    ./scripts/"$@"
+    exec ./scripts/"$@"
 else
-    "$@"
+    exec "$@"
 fi
