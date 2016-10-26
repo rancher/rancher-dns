@@ -10,10 +10,12 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"reflect"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -27,6 +29,7 @@ var (
 	debug          = flag.Bool("debug", false, "Debug")
 	listen         = flag.String("listen", ":53", "Address to listen to (TCP and UDP)")
 	listenReload   = flag.String("listenReload", "127.0.0.1:8113", "Address to listen to for reload requests (TCP)")
+	answersFile    = flag.String("answers", "./answers.yaml", "File containing the answers to respond with")
 	defaultTtl     = flag.Uint("ttl", 600, "TTL for answers")
 	ndots          = flag.Uint("ndots", 0, "Queries with more than this number of dots will not use search paths")
 	cacheCapacity  = flag.Uint("cache-capacity", 1000, "Cache capacity")
@@ -44,19 +47,30 @@ var (
 	configGenerator           *ConfigGenerator
 )
 
+func metadataDriven() bool {
+	return *metadataServer != ""
+}
+
 func main() {
 	parseFlags()
+
+	log.Infof("Starting rancher-dns %s", VERSION)
+	err := loadAnswers()
+	if err != nil {
+		log.Fatal("Cannot startup without a valid Answers file")
+	}
 
 	if *showVersion {
 		fmt.Printf("%s\n", VERSION)
 		os.Exit(0)
 	}
 
-	log.Infof("Starting rancher-dns %s", VERSION)
-	configGenerator = &ConfigGenerator{}
-	err := configGenerator.Init(metadataServer)
-	if err != nil {
-		log.Fatalf("Cannot startup: failed to init config generator: %v", err)
+	if metadataDriven() {
+		configGenerator = &ConfigGenerator{}
+		err = configGenerator.Init(metadataServer)
+		if err != nil {
+			log.Fatalf("Cannot startup: failed to init config generator: %v", err)
+		}
 	}
 
 	watchSignals()
@@ -104,7 +118,7 @@ func parseFlags() {
 	}
 }
 
-func loadAnswers(name string) {
+func loadAnswersFromMeta(name string) {
 	newAnswers, err := configGenerator.GenerateAnswers()
 	if err != nil {
 		log.Errorf("Failed to generate answers: %v", err)
@@ -124,15 +138,51 @@ func loadAnswers(name string) {
 	if err != nil {
 		log.Errorf("Failed to marshall answers: %v", err)
 	}
-	err = ioutil.WriteFile("/etc/rancher-dns/answers.json", b, 0644)
+	err = ioutil.WriteFile(*answersFile, b, 0644)
 	if err != nil {
 		log.Errorf("Failed to write answers to file: %v", err)
 	}
 	log.Infof("Reloaded answers")
 }
 
+func loadAnswers() (err error) {
+	log.Debug("Loading answers")
+	temp, err := ParseAnswers(*answersFile)
+	if err == nil {
+		clearClientSpecificCaches()
+		answers = temp
+		log.Infof("Loaded answers")
+	} else {
+		log.Errorf("Failed to load answers: %v", err)
+	}
+
+	return err
+}
+
 func watchSignals() {
-	go configGenerator.metaFetcher.OnChange(5, loadAnswers)
+	if metadataDriven() {
+		go configGenerator.metaFetcher.OnChange(5, loadAnswersFromMeta)
+	} else {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, syscall.SIGHUP)
+
+		go func() {
+			for _ = range c {
+				log.Info("Received HUP signal")
+				reloadChan <- nil
+			}
+		}()
+
+		go func() {
+			for resp := range reloadChan {
+				err := loadAnswers()
+				if resp != nil {
+					resp <- err
+				}
+			}
+		}()
+	}
+
 }
 
 func watchHttp() {
