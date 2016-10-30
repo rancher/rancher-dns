@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -23,16 +25,17 @@ import (
 )
 
 var (
-	showVersion   = flag.Bool("version", false, "Show version")
-	debug         = flag.Bool("debug", false, "Debug")
-	listen        = flag.String("listen", ":53", "Address to listen to (TCP and UDP)")
-	listenReload  = flag.String("listenReload", "127.0.0.1:8113", "Address to listen to for reload requests (TCP)")
-	answersFile   = flag.String("answers", "./answers.yaml", "File containing the answers to respond with")
-	defaultTtl    = flag.Uint("ttl", 600, "TTL for answers")
-	ndots         = flag.Uint("ndots", 0, "Queries with more than this number of dots will not use search paths")
-	cacheCapacity = flag.Uint("cache-capacity", 1000, "Cache capacity")
-	logFile       = flag.String("log", "", "Log file")
-	pidFile       = flag.String("pid-file", "", "PID to write to")
+	showVersion    = flag.Bool("version", false, "Show version")
+	debug          = flag.Bool("debug", false, "Debug")
+	listen         = flag.String("listen", ":53", "Address to listen to (TCP and UDP)")
+	listenReload   = flag.String("listenReload", "127.0.0.1:8113", "Address to listen to for reload requests (TCP)")
+	answersFile    = flag.String("answers", "./answers.yaml", "File containing the answers to respond with")
+	defaultTtl     = flag.Uint("ttl", 600, "TTL for answers")
+	ndots          = flag.Uint("ndots", 0, "Queries with more than this number of dots will not use search paths")
+	cacheCapacity  = flag.Uint("cache-capacity", 1000, "Cache capacity")
+	logFile        = flag.String("log", "", "Log file")
+	pidFile        = flag.String("pid-file", "", "PID to write to")
+	metadataServer = flag.String("metadata-server", "", "Metadata server url")
 
 	answers                   Answers
 	globalCache               *cache.Cache
@@ -41,21 +44,35 @@ var (
 	VERSION                   string
 	reloadChan                = make(chan chan error)
 	serial                    = uint32(1)
+	configGenerator           *ConfigGenerator
 )
+
+func metadataDriven() bool {
+	return *metadataServer != ""
+}
 
 func main() {
 	parseFlags()
-
-	if *showVersion {
-		fmt.Printf("%s\n", VERSION)
-		os.Exit(0)
-	}
 
 	log.Infof("Starting rancher-dns %s", VERSION)
 	err := loadAnswers()
 	if err != nil {
 		log.Fatal("Cannot startup without a valid Answers file")
 	}
+
+	if *showVersion {
+		fmt.Printf("%s\n", VERSION)
+		os.Exit(0)
+	}
+
+	if metadataDriven() {
+		configGenerator = &ConfigGenerator{}
+		err = configGenerator.Init(metadataServer)
+		if err != nil {
+			log.Fatalf("Cannot startup: failed to init config generator: %v", err)
+		}
+	}
+
 	watchSignals()
 	watchHttp()
 
@@ -101,6 +118,33 @@ func parseFlags() {
 	}
 }
 
+func loadAnswersFromMeta(name string) {
+	newAnswers, err := configGenerator.GenerateAnswers()
+	if err != nil {
+		log.Errorf("Failed to generate answers: %v", err)
+	}
+	ConvertPtrIps(&newAnswers)
+
+	if reflect.DeepEqual(newAnswers, answers) {
+		log.Debug("No changes in dns data")
+		return
+	}
+
+	log.Infof("Reloading answers")
+	clearClientSpecificCaches()
+	answers = newAnswers
+	// write to file (debugging purposes)
+	b, err := json.Marshal(answers)
+	if err != nil {
+		log.Errorf("Failed to marshall answers: %v", err)
+	}
+	err = ioutil.WriteFile(*answersFile, b, 0644)
+	if err != nil {
+		log.Errorf("Failed to write answers to file: %v", err)
+	}
+	log.Infof("Reloaded answers")
+}
+
 func loadAnswers() (err error) {
 	log.Debug("Loading answers")
 	temp, err := ParseAnswers(*answersFile)
@@ -116,30 +160,34 @@ func loadAnswers() (err error) {
 }
 
 func watchSignals() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGHUP)
+	if metadataDriven() {
+		go configGenerator.metaFetcher.OnChange(5, loadAnswersFromMeta)
+	} else {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, syscall.SIGHUP)
 
-	go func() {
-		for _ = range c {
-			log.Info("Received HUP signal")
-			reloadChan <- nil
-		}
-	}()
-
-	go func() {
-		for resp := range reloadChan {
-			err := loadAnswers()
-			if resp != nil {
-				resp <- err
+		go func() {
+			for _ = range c {
+				log.Info("Received HUP signal")
+				reloadChan <- nil
 			}
-		}
-	}()
+		}()
+
+		go func() {
+			for resp := range reloadChan {
+				err := loadAnswers()
+				if resp != nil {
+					resp <- err
+				}
+			}
+		}()
+	}
+
 }
 
 func watchHttp() {
 	reloadRouter := mux.NewRouter()
 	reloadRouter.HandleFunc("/v1/reload", httpReload).Methods("POST")
-
 	log.Info("Listening for Reload on ", *listenReload)
 	go http.ListenAndServe(*listenReload, reloadRouter)
 }

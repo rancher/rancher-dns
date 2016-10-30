@@ -5,10 +5,6 @@ import:
 - package: github.com/miekg/dns
   version: 75e6e86cc601825c5dbcd4e0c209eab180997cd7
 
-- package: gopkg.in/yaml.v2
-  version: ca8f6aacaa4072fe5d27388b07162941cd750c65
-  repo:    https://github.com/rancher/yaml
-
 - package: github.com/skynetservices/skydns
   version: f7b6fb74bcfab300b4e7e0e27b1fe6c0ed555f78
 
@@ -17,3 +13,10 @@ import:
 
 - package: github.com/gorilla/context
   version: 1ea25387ff6f684839d82767c1733ff4d4d15d0a
+
+- package: github.com/rancher/go-rancher-metadata
+  version: cf0b2fc2bac2ef1de522e44dce5db087a63debfc
+
+- package: gopkg.in/yaml.v2
+  version: ca8f6aacaa4072fe5d27388b07162941cd750c65
+  repo:    https://github.com/rancher/yaml

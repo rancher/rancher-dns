@@ -1,4 +1,3 @@
-#!/bin/bash
 set -e
 
 source $(dirname $0)/version
@@ -6,4 +5,5 @@ source $(dirname $0)/version
 cd $(dirname $0)/..
 
 mkdir -p bin
-go build -ldflags "-X main.VERSION=$VERSION -linkmode external -extldflags -static" -o bin/rancher-dns
+[ "$(uname)" != "Darwin" ] && LINKFLAGS="-linkmode external -extldflags -static -s"
+go build -ldflags "-X main.VERSION=$VERSION $LINKFLAGS" -o bin/rancher-dns
