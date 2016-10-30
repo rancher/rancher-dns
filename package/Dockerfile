@@ -1,6 +1,7 @@
 FROM ubuntu:16.04
-COPY rancher-dns /usr/bin/
-RUN mkdir /etc/rancher-dns
-RUN touch /etc/rancher-dns/answers.json
-
+RUN apt-get update && \
+    apt-get install -y iptables iproute2
+RUN mkdir /etc/rancher-dns/ && \
+    touch /etc/rancher-dns/answers.json
+COPY rancher-dns router /usr/bin/
 CMD ["rancher-dns"]
