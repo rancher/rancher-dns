@@ -1,0 +1,33 @@
+#!/bin/bash
+set -e
+
+trap "exit 0" SIGTERM SIGINT
+
+STATE=/var/tmp/ip
+IP=
+
+if [ "$#" != 0 ]; then
+    ip addr show dev eth0 | grep 'inet ' | awk '{print $2}' | cut -f1 -d/ > $STATE
+    exec "$@"
+fi
+
+while true; do
+    if [ -e $STATE ]; then
+        NEW_IP=$(<$STATE)
+        if [ "$NEW_IP" != "$IP" ]; then
+            iptables -w -t nat -N CATTLE_DNS || true
+            iptables -w -t nat -F CATTLE_DNS
+            iptables -w -t nat -A CATTLE_DNS -p tcp -d 169.254.169.250 --dport 53 -j DNAT --to ${NEW_IP}:53
+            iptables -w -t nat -A CATTLE_DNS -p udp -d 169.254.169.250 --dport 53 -j DNAT --to ${NEW_IP}:53
+            for i in PREROUTING OUTPUT; do
+                iptables -w -t nat -D $i -j CATTLE_DNS || true
+                iptables -w -t nat -I $i -j CATTLE_DNS
+            done
+            IP=${NEW_IP}
+            echo Forwarding traffic to $IP
+        fi
+    else
+        echo Waiting for $STATE
+    fi
+    sleep 2
+done

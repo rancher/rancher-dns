@@ -1,7 +1,6 @@
 #!/bin/bash
-set -e
 
-ARCH=${ARCH:?"ARCH not set"}
+ARCH=${ARCH:-"amd64"}
 SUFFIX=""
 [ "${ARCH}" != "amd64" ] && SUFFIX="_${ARCH}"
 
@@ -12,7 +11,13 @@ cd $(dirname $0)/../package
 TAG=${TAG:-${VERSION}${SUFFIX}}
 REPO=${REPO:-rancher}
 
-cp ../bin/rancher-dns  .
-docker build -t ${REPO}/rancher-dns:${TAG} .
+if $(echo ${TAG} | grep -q dirty); then
+    TAG=dev
+fi
 
-echo Built ${REPO}/rancher-dns:${TAG}
+cp ../bin/rancher-dns .
+docker build -t ${REPO}/dns:${TAG} .
+
+mkdir -p ../dist
+echo ${REPO}/dns:${TAG} > ../dist/images
+echo Built ${REPO}/dns:${TAG}
