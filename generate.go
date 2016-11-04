@@ -78,7 +78,13 @@ func (c *ConfigGenerator) GenerateAnswers() (Answers, error) {
 			search = container.DnsSearch
 		}
 		if container.Dns != nil {
-			recurse = container.Dns
+			//exclude 169.254.169.250
+			for _, dns := range container.Dns {
+				if strings.EqualFold(dns, "169.254.169.250") {
+					continue
+				}
+				recurse = append(recurse, dns)
+			}
 		}
 
 		a := ClientAnswers{
