@@ -15,7 +15,7 @@ import:
   version: 1ea25387ff6f684839d82767c1733ff4d4d15d0a
 
 - package: github.com/rancher/go-rancher-metadata
-  version: cf0b2fc2bac2ef1de522e44dce5db087a63debfc
+  version: c48cdb6a5f2b96797f4163f47ceb5fa387ab71c4
 
 - package: gopkg.in/yaml.v2
   version: ca8f6aacaa4072fe5d27388b07162941cd750c65
