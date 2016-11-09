@@ -3,9 +3,13 @@ set -e
 
 cd $(dirname $0)/..
 
-echo Running tests
+echo Running unit tests
 
 PACKAGES=". $(find -name '*.go' | xargs -I{} dirname {} |  cut -f2 -d/ | sort -u | grep -Ev '(^\.$|.git|.trash-cache|vendor|bin)' | sed -e 's!^!./!' -e 's!$!/...!')"
 
 [ "${ARCH}" == "amd64" ] && RACE=-race
 go test ${RACE} -cover -tags=test ${PACKAGES}
+
+echo Running integration tests
+
+bats --tap ./test/integration
