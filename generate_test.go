@@ -192,13 +192,19 @@ func TestClientKubernetes(t *testing.T) {
 	if len(c.A) != 0 {
 		t.Fatalf("Incorrect number of A records: [%v]", len(c.A))
 	}
-	a := getRecordAFromDefault(answers, "clientKubernetes.clientKubernetes.foo.rancher.internal.")
+	a := getRecordAFromDefault(answers, "clientKubernetes.foo.svc.cluster.local.")
+	if len(a.Answer) != 1 {
+		t.Fatalf("Incorrect number of A records, should be 1: [%v]", len(a.Answer))
+	}
+
+	//container name is clientKubernetes too
+	a = getRecordAFromDefault(answers, "clientKubernetes.clientKubernetes.foo.svc.cluster.local.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of A records, should be 1: [%v]", len(a.Answer))
 	}
 }
 
-func TestClientKubernetesVip(t *testing.T) {
+func TestVipClientKubernetes(t *testing.T) {
 	answers, err := c.GenerateAnswers()
 	if err != nil {
 		t.Fatalf("Error generating answers %v", err)
@@ -211,7 +217,14 @@ func TestClientKubernetesVip(t *testing.T) {
 	if len(c.A) != 0 {
 		t.Fatalf("Incorrect number of A records: [%v]", len(c.A))
 	}
-	a := getRecordAFromDefault(answers, "clientKubernetesVip.clientKubernetesVip.foo.rancher.internal.")
+
+	//container name is clientKubernetesVip too
+	a := getRecordAFromDefault(answers, "clientKubernetesVip.foo.svc.cluster.local.")
+	if len(a.Answer) != 1 {
+		t.Fatalf("Incorrect number of A records, should be 1: [%v]", len(a.Answer))
+	}
+
+	a = getRecordAFromDefault(answers, "clientKubernetesVip.clientKubernetesVip.foo.svc.cluster.local.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of A records, should be 1: [%v]", len(a.Answer))
 	}
