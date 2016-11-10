@@ -1,6 +1,7 @@
 package main
 
 import (
+	//"github.com/Sirupsen/logrus"
 	"github.com/rancher/go-rancher-metadata/metadata"
 	"strings"
 	"testing"
@@ -345,6 +346,45 @@ func TestSidekicks(t *testing.T) {
 		t.Fatalf("Incorrect number of answers for sidekick service [%v]", a.Answer)
 	}
 	if a.Answer[0] != "192.168.0.2" {
+		t.Fatalf("Incorrect answer for regular service ip [%v]", a.Answer[0])
+	}
+}
+
+func TestNSidekicks(t *testing.T) {
+	answers, err := c.GenerateAnswers()
+	if err != nil {
+		t.Fatalf("Error generating answers %v", err)
+	}
+
+	a := getRecordAFromDefault(answers, "primaryn.foo.rancher.internal.")
+	if len(a.Answer) != 1 {
+		t.Fatalf("Incorrect number of answers for primary service [%v]", a.Answer)
+	}
+	if a.Answer[0] != "192.168.0.11" {
+		t.Fatalf("Incorrect answer for primary service ip [%v]", a.Answer[0])
+	}
+
+	a = getRecordAFromDefault(answers, "primaryn.rancher.internal.")
+	if len(a.Answer) != 1 {
+		t.Fatalf("Incorrect number of answers for primary service container [%v]", a.Answer)
+	}
+	if a.Answer[0] != "192.168.0.11" {
+		t.Fatalf("Incorrect answer for primary service ip [%v]", a.Answer[0])
+	}
+
+	a = getRecordAFromDefault(answers, "sidekickn.primaryn.foo.rancher.internal.")
+	if len(a.Answer) != 1 {
+		t.Fatalf("Incorrect number of answers for sidekick service [%v]", a.Answer)
+	}
+	if a.Answer[0] != "192.168.0.11" {
+		t.Fatalf("Incorrect answer for sidekick service [%v]", a.Answer[0])
+	}
+
+	a = getRecordAFromDefault(answers, "sidekickn.rancher.internal.")
+	if len(a.Answer) != 1 {
+		t.Fatalf("Incorrect number of answers for sidekick service container [%v]", a.Answer)
+	}
+	if a.Answer[0] != "192.168.0.11" {
 		t.Fatalf("Incorrect answer for regular service ip [%v]", a.Answer[0])
 	}
 }
@@ -709,7 +749,39 @@ func (mf tMetaFetcher) GetServices() ([]metadata.Service, error) {
 		HealthCheck: healthCheck,
 	}
 
-	services = append(services, kubernetes, healthEmpty, kubernetesVip, clientip1Svc, vip, primary, sidekick, regular, stopped, stoppedone, unhealthy, externalCname, svcWithLinksAlias, externalIPs, alias, client, svcWithLinks)
+	c = metadata.Container{
+		Name:        "primaryn",
+		StackName:   "foo",
+		ServiceName: "primaryn",
+		PrimaryIp:   "192.168.0.11",
+		State:       "running",
+		UUID:        "networkFromPrimary",
+	}
+	containers = []metadata.Container{c}
+	primaryn := metadata.Service{
+		Name:       "primaryn",
+		Kind:       "service",
+		StackName:  "foo",
+		Containers: containers,
+	}
+
+	c = metadata.Container{
+		Name:        "sidekickn",
+		StackName:   "foo",
+		ServiceName: "sidekickn",
+		State:       "running",
+		NetworkFromContainerUUID: "networkFromPrimary",
+	}
+	containers = []metadata.Container{c}
+	sidekickn := metadata.Service{
+		Name:               "sidekickn",
+		Kind:               "service",
+		StackName:          "foo",
+		PrimaryServiceName: "primaryn",
+		Containers:         containers,
+	}
+
+	services = append(services, kubernetes, healthEmpty, primaryn, sidekickn, kubernetesVip, clientip1Svc, vip, primary, sidekick, regular, stopped, stoppedone, unhealthy, externalCname, svcWithLinksAlias, externalIPs, alias, client, svcWithLinks)
 	return services, nil
 }
 
@@ -805,7 +877,24 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		NetworkFromContainerUUID: "networkFromMaster",
 	}
 
-	containers := []metadata.Container{c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12}
+	c13 := metadata.Container{
+		Name:        "sidekickn",
+		StackName:   "foo",
+		ServiceName: "sidekickn",
+		State:       "running",
+		NetworkFromContainerUUID: "networkFromPrimary",
+	}
+
+	c14 := metadata.Container{
+		Name:        "primaryn",
+		StackName:   "foo",
+		ServiceName: "primaryn",
+		PrimaryIp:   "192.168.0.11",
+		State:       "running",
+		UUID:        "networkFromPrimary",
+	}
+
+	containers := []metadata.Container{c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14}
 	return containers, nil
 }
 

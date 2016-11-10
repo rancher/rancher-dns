@@ -136,10 +136,18 @@ func (c *ConfigGenerator) GetRecords() (map[string]RecordA, map[string]RecordCna
 		return nil, nil, nil, nil, nil, err
 	}
 
+	uuidToPrimaryIp := make(map[string]string)
+	for _, c := range containers {
+		if c.PrimaryIp == "" {
+			continue
+		}
+		uuidToPrimaryIp[c.UUID] = c.PrimaryIp
+	}
+
 	// get service records
 	for _, svc := range services {
 		svcNameToSvc[fmt.Sprintf("%s/%s", svc.StackName, svc.Name)] = svc
-		records, err := c.getServiceEndpoints(&svc)
+		records, err := c.getServiceEndpoints(&svc, uuidToPrimaryIp)
 		if err != nil {
 			return nil, nil, nil, nil, nil, err
 		}
@@ -189,13 +197,6 @@ func (c *ConfigGenerator) GetRecords() (map[string]RecordA, map[string]RecordCna
 		}
 	}
 
-	uuidToPrimaryIp := make(map[string]string)
-	for _, c := range containers {
-		if c.PrimaryIp == "" {
-			continue
-		}
-		uuidToPrimaryIp[c.UUID] = c.PrimaryIp
-	}
 	for _, c := range containers {
 		primaryIP := c.PrimaryIp
 		if primaryIP == "" && c.NetworkFromContainerUUID != "" {
@@ -294,23 +295,23 @@ func getContainerFqdn(c *metadata.Container, s *metadata.Service) string {
 	return strings.ToLower(fmt.Sprintf("%s.%s.", c.Name, getDefaultRancherNamespace()))
 }
 
-func (c *ConfigGenerator) getServiceEndpoints(svc *metadata.Service) ([]*Record, error) {
+func (c *ConfigGenerator) getServiceEndpoints(svc *metadata.Service, uuidToPrimaryIp map[string]string) ([]*Record, error) {
 	var records []*Record
 	var err error
 	if strings.EqualFold(svc.Kind, "externalService") {
 		records = c.getExternalServiceEndpoints(svc)
 	} else if strings.EqualFold(svc.Kind, "dnsService") {
-		records, err = c.getAliasServiceEndpoints(svc)
+		records, err = c.getAliasServiceEndpoints(svc, uuidToPrimaryIp)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		records = c.getRegularServiceEndpoints(svc)
+		records = c.getRegularServiceEndpoints(svc, uuidToPrimaryIp)
 	}
 	return records, nil
 }
 
-func (c *ConfigGenerator) getRegularServiceEndpoints(svc *metadata.Service) []*Record {
+func (c *ConfigGenerator) getRegularServiceEndpoints(svc *metadata.Service, uuidToPrimaryIp map[string]string) []*Record {
 	var recs []*Record
 	//get vip
 	if svc.Vip != "" {
@@ -327,8 +328,12 @@ func (c *ConfigGenerator) getRegularServiceEndpoints(svc *metadata.Service) []*R
 	for i, c := range svc.Containers {
 		isRunning := strings.EqualFold(c.State, "running") || strings.EqualFold(c.State, "starting")
 		isHealthy := (strings.EqualFold(c.HealthState, "") && svc.HealthCheck.Port == 0) || strings.EqualFold(c.HealthState, "healthy") || strings.EqualFold(c.HealthState, "updating-healthy")
+		primaryIP := c.PrimaryIp
+		if primaryIP == "" && c.NetworkFromContainerUUID != "" {
+			primaryIP = uuidToPrimaryIp[c.NetworkFromContainerUUID]
+		}
 		rec := &Record{
-			IP:        c.PrimaryIp,
+			IP:        primaryIP,
 			IsHealthy: isHealthy && isRunning,
 			IsCname:   false,
 			Container: &svc.Containers[i],
@@ -359,7 +364,7 @@ func (c *ConfigGenerator) getExternalServiceEndpoints(svc *metadata.Service) []*
 	return recs
 }
 
-func (c *ConfigGenerator) getAliasServiceEndpoints(svc *metadata.Service) ([]*Record, error) {
+func (c *ConfigGenerator) getAliasServiceEndpoints(svc *metadata.Service, uuidToPrimaryIp map[string]string) ([]*Record, error) {
 	var recs []*Record
 	for link := range svc.Links {
 		svcName := strings.SplitN(link, "/", 2)
@@ -370,7 +375,7 @@ func (c *ConfigGenerator) getAliasServiceEndpoints(svc *metadata.Service) ([]*Re
 		if service == nil {
 			continue
 		}
-		newRecs, err := c.getServiceEndpoints(service)
+		newRecs, err := c.getServiceEndpoints(service, uuidToPrimaryIp)
 		if err != nil {
 			return nil, err
 		}
