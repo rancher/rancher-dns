@@ -263,8 +263,8 @@ func getDefaultKubernetesNamespace() string {
 }
 
 func getServiceGlobalNamespace(s *metadata.Service) string {
-	if strings.EqualFold(s.Name, "kubernetesService") {
-		return getDefaultKubernetesNamespace()
+	if strings.EqualFold(s.Kind, "kubernetesService") {
+		return fmt.Sprintf("svc.%s", getDefaultKubernetesNamespace())
 	}
 	return getDefaultRancherNamespace()
 }
@@ -288,7 +288,7 @@ func getLinkStackFqdn(linkName string, s *metadata.Service) string {
 
 func getContainerFqdn(c *metadata.Container, s *metadata.Service) string {
 	if s != nil && strings.EqualFold(s.Kind, "kubernetesService") {
-		return strings.ToLower(fmt.Sprintf("%s.%s.%s.%s.", c.Name, s.Name, s.StackName, getDefaultRancherNamespace()))
+		return strings.ToLower(fmt.Sprintf("%s.%s.%s.%s.", c.Name, s.Name, s.StackName, getServiceGlobalNamespace(s)))
 
 	}
 	return strings.ToLower(fmt.Sprintf("%s.%s.", c.Name, getDefaultRancherNamespace()))
