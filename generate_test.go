@@ -327,6 +327,33 @@ func TestClientWithLinksAlias(t *testing.T) {
 	}
 }
 
+func TestClientWithAliasCnameLinks(t *testing.T) {
+	answers, err := c.GenerateAnswers()
+	if err != nil {
+		t.Fatalf("Error generating answers %v", err)
+	}
+
+	ips := []string{"172.17.0.66", "172.17.0.77"}
+	for _, ip := range ips {
+		c := getClientAnswers(answers, ip)
+		if c == nil {
+			t.Fatalf("Can't find client answers for: [%v]", ip)
+		}
+
+		fqdns := []string{"myaliascname.foo.rancher.internal.", "myaliascname.rancher.internal."}
+		for _, fqdn := range fqdns {
+			val, ok := c.Cname[fqdn]
+			if !ok {
+				t.Fatalf("Can't find the fqnd cname link %s", fqdn)
+			}
+
+			if val.Answer != "google.com" {
+				t.Fatalf("Record [%v] doesn't match expected value google.com", val.Answer[0])
+			}
+		}
+	}
+}
+
 func TestSidekicks(t *testing.T) {
 	answers, err := c.GenerateAnswers()
 	if err != nil {
@@ -661,6 +688,31 @@ func (mf tMetaFetcher) GetServices() ([]metadata.Service, error) {
 		Containers: containers,
 	}
 
+	links = make(map[string]string)
+	links["foo/externalCnameSvc"] = "myaliascname"
+	c1 = metadata.Container{
+		Name:        "client_container",
+		StackName:   "foo",
+		ServiceName: "svcWithLinksAliasCname",
+		PrimaryIp:   "172.17.0.66",
+		State:       "running",
+	}
+	c2 = metadata.Container{
+		Name:        "client_container",
+		StackName:   "foo",
+		ServiceName: "svcWithLinksAliasCname",
+		PrimaryIp:   "172.17.0.77",
+		State:       "running",
+	}
+	containers = []metadata.Container{c1, c2}
+	svcWithLinksAliasCname := metadata.Service{
+		Name:       "svcWithLinksAliasCname",
+		Kind:       "service",
+		StackName:  "foo",
+		Links:      links,
+		Containers: containers,
+	}
+
 	c = metadata.Container{
 		Name:        "primary",
 		StackName:   "foo",
@@ -781,7 +833,7 @@ func (mf tMetaFetcher) GetServices() ([]metadata.Service, error) {
 		Containers:         containers,
 	}
 
-	services = append(services, kubernetes, healthEmpty, primaryn, sidekickn, kubernetesVip, clientip1Svc, vip, primary, sidekick, regular, stopped, stoppedone, unhealthy, externalCname, svcWithLinksAlias, externalIPs, alias, client, svcWithLinks)
+	services = append(services, kubernetes, healthEmpty, primaryn, sidekickn, kubernetesVip, clientip1Svc, vip, primary, sidekick, regular, stopped, stoppedone, unhealthy, externalCname, svcWithLinksAliasCname, svcWithLinksAlias, externalIPs, alias, client, svcWithLinks)
 	return services, nil
 }
 
@@ -894,7 +946,24 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		UUID:        "networkFromPrimary",
 	}
 
-	containers := []metadata.Container{c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14}
+	c15 := metadata.Container{
+		Name:        "client_container",
+		StackName:   "foo",
+		ServiceName: "svcWithLinksAliasCname",
+		PrimaryIp:   "172.17.0.66",
+		State:       "running",
+		DnsSearch:   []string{"svcWithLinksAliasCname.rancher.internal", "foo.rancher.internal", "rancher.internal"},
+	}
+	c16 := metadata.Container{
+		Name:        "client_container",
+		StackName:   "foo",
+		ServiceName: "svcWithLinksAliasCname",
+		PrimaryIp:   "172.17.0.77",
+		State:       "running",
+		DnsSearch:   []string{"svcWithLinksAliasCname.rancher.internal", "foo.rancher.internal", "rancher.internal"},
+	}
+
+	containers := []metadata.Container{c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15, c16}
 	return containers, nil
 }
 
