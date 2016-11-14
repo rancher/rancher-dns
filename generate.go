@@ -69,7 +69,7 @@ func (c *ConfigGenerator) GenerateAnswers() (Answers, error) {
 				cARecs[getLinkGlobalFqdn(linkAlias, &linkedService)] = aRecs[linkServiceFqdn]
 			} else if _, ok := cRecs[linkServiceFqdn]; ok {
 				cCnameRecs[getLinkStackFqdn(linkAlias, &linkedService)] = cRecs[linkServiceFqdn]
-				cARecs[getLinkGlobalFqdn(linkAlias, &linkedService)] = aRecs[linkServiceFqdn]
+				cCnameRecs[getLinkGlobalFqdn(linkAlias, &linkedService)] = cRecs[linkServiceFqdn]
 			}
 		}
 		search := []string{}
