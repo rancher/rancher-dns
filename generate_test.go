@@ -100,7 +100,7 @@ func TestNoHealthStateWithHealthcheck(t *testing.T) {
 	}
 }
 
-func TestExternalCnameService(t *testing.T) {
+func TestExternalgService(t *testing.T) {
 	answers, err := c.GenerateAnswers()
 	if err != nil {
 		t.Fatalf("Error generating answers %v", err)
@@ -113,7 +113,7 @@ func TestExternalCnameService(t *testing.T) {
 
 	c := getRecordCnameFromDefault(answers, "externalCnameSvc.foo.rancher.internal.")
 
-	if c.Answer != "google.com" {
+	if c.Answer != "google.com." {
 		t.Fatalf("Incorrect answer for cname [%v]", c.Answer)
 	}
 }
@@ -347,8 +347,8 @@ func TestClientWithAliasCnameLinks(t *testing.T) {
 				t.Fatalf("Can't find the fqnd cname link %s", fqdn)
 			}
 
-			if val.Answer != "google.com" {
-				t.Fatalf("Record [%v] doesn't match expected value google.com", val.Answer[0])
+			if val.Answer != "google.com." {
+				t.Fatalf("Record [%v] doesn't match expected value google.com.", val.Answer[0])
 			}
 		}
 	}

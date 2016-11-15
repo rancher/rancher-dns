@@ -154,7 +154,7 @@ func (c *ConfigGenerator) GetRecords() (map[string]RecordA, map[string]RecordCna
 		for i, rec := range records {
 			if rec.IsCname {
 				cnameRec := RecordCname{
-					Answer: rec.IP,
+					Answer: fmt.Sprintf("%s.", rec.IP),
 				}
 				cRecs[getServiceFqdn(&svc)] = cnameRec
 				continue
