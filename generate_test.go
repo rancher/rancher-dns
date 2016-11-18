@@ -95,8 +95,13 @@ func TestNoHealthStateWithHealthcheck(t *testing.T) {
 	}
 
 	a := getRecordAFromDefault(answers, "healthempty.foo.rancher.internal.")
+
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of answers for service with health check empty, expected count 1: [%v]", a.Answer)
+	}
+
+	if a.Answer[0] != "192.168.0.34" {
+		t.Fatalf("Incorrect ip, expected 192.168.0.34, actual: [%v]", a.Answer)
 	}
 }
 
@@ -776,20 +781,29 @@ func (mf tMetaFetcher) GetServices() ([]metadata.Service, error) {
 	}
 
 	c1 = metadata.Container{
-		Name:        "clientKubernetesVip",
-		StackName:   "foo",
-		ServiceName: "clientKubernetesVip",
-		PrimaryIp:   "192.168.0.33",
-		State:       "running",
-	}
-	c2 = metadata.Container{
-		Name:        "clientKubernetesVip",
+		Name:        "healthEmpty1",
 		StackName:   "foo",
 		ServiceName: "healthEmpty",
 		PrimaryIp:   "192.168.0.33",
 		State:       "running",
+		HealthState: "initializing",
 	}
-	containers = []metadata.Container{c1, c2}
+	c2 = metadata.Container{
+		Name:        "healthEmpty2",
+		StackName:   "foo",
+		ServiceName: "healthEmpty",
+		PrimaryIp:   "192.168.0.34",
+		State:       "running",
+		HealthState: "healthy",
+	}
+	c3 := metadata.Container{
+		Name:        "healthEmpty3",
+		StackName:   "foo",
+		ServiceName: "healthEmpty",
+		PrimaryIp:   "192.168.0.35",
+		State:       "running",
+	}
+	containers = []metadata.Container{c1, c2, c3}
 	healthCheck := metadata.HealthCheck{
 		Port: 100,
 	}
@@ -910,7 +924,7 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		State:       "running",
 	}
 	c10 := metadata.Container{
-		Name:        "clientKubernetesVip",
+		Name:        "healthEmpty1",
 		StackName:   "foo",
 		ServiceName: "healthEmpty",
 		PrimaryIp:   "192.168.0.33",
@@ -963,7 +977,23 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		DnsSearch:   []string{"svcWithLinksAliasCname.rancher.internal", "foo.rancher.internal", "rancher.internal"},
 	}
 
-	containers := []metadata.Container{c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15, c16}
+	c17 := metadata.Container{
+		Name:        "healthEmpty2",
+		StackName:   "foo",
+		ServiceName: "healthEmpty",
+		PrimaryIp:   "192.168.0.34",
+		State:       "running",
+	}
+
+	c18 := metadata.Container{
+		Name:        "healthEmpty3",
+		StackName:   "foo",
+		ServiceName: "healthEmpty",
+		PrimaryIp:   "192.168.0.35",
+		State:       "running",
+	}
+
+	containers := []metadata.Container{c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15, c16, c17, c18}
 	return containers, nil
 }
 

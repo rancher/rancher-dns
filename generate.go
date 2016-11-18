@@ -168,7 +168,13 @@ func (c *ConfigGenerator) GetRecords() (map[string]RecordA, map[string]RecordCna
 				if rec.Container != nil {
 				}
 				if i == len(records)-1 {
-					add = true
+					if existing, ok := aRecs[getServiceFqdn(&svc)]; ok {
+						if len(existing.Answer) == 0 {
+							add = true
+						}
+					} else {
+						add = true
+					}
 				}
 			}
 			if add {
