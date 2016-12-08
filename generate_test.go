@@ -296,7 +296,7 @@ func TestNetworkFrom(t *testing.T) {
 		t.Fatalf("Incorrect number of A records, should be 1: [%v]", len(a.Answer))
 	}
 	if a.Answer[0] != "192.168.0.34" {
-		t.Fatalf("Incorrect ip for child, should be: [%v]", ip)
+		t.Fatalf("Incorrect ip for child, should be: [%v], actual value is [%v]", ip, a.Answer[0])
 	}
 }
 
@@ -328,6 +328,35 @@ func TestClientWithLinksAlias(t *testing.T) {
 			if val.Answer[0] != "192.168.1.1" {
 				t.Fatalf("Record [%s] doesn't match expected value 192.168.1.1", val.Answer[0])
 			}
+		}
+	}
+}
+
+func TestContainerLink(t *testing.T) {
+	answers, err := c.GenerateAnswers()
+	if err != nil {
+		t.Fatalf("Error generating answers %v", err)
+	}
+
+	ip := "172.17.0.777"
+	c := getClientAnswers(answers, ip)
+	if c == nil {
+		t.Fatalf("Can't find client answers for: [%v]", ip)
+	}
+	if len(c.A) != 1 {
+		t.Fatalf("Incorrect number of A records, should be 1: [%v]", len(c.A))
+	}
+	fqdn := "containerLink.rancher.internal."
+	for key, val := range c.A {
+		ok := strings.EqualFold(fqdn, key)
+		if !ok {
+			t.Fatalf("Can't find the fqnd link %s", fqdn)
+		}
+		if len(val.Answer) != 1 {
+			t.Fatalf("Incorrect number of answers [%v], expected 1", len(val.Answer))
+		}
+		if val.Answer[0] != "192.168.1.1" {
+			t.Fatalf("Record [%s] doesn't match expected value 192.168.1.1", val.Answer[0])
 		}
 	}
 }
@@ -417,7 +446,7 @@ func TestNSidekicks(t *testing.T) {
 		t.Fatalf("Incorrect number of answers for sidekick service container [%v]", a.Answer)
 	}
 	if a.Answer[0] != "192.168.0.11" {
-		t.Fatalf("Incorrect answer for regular service ip [%v]", a.Answer[0])
+		t.Fatalf("Incorrect answer for sidekick service container; expected ip 192.168.0.11; actual value is [%v]", a.Answer[0])
 	}
 }
 
@@ -473,6 +502,7 @@ func (mf tMetaFetcher) GetService(svcName string, stackName string) (*metadata.S
 	if svcName == "regularSvc" && stackName == "foo" {
 		c1 := metadata.Container{
 			Name:        "regular_container",
+			UUID:        "regular_container",
 			StackName:   "foo",
 			ServiceName: "regularSvc",
 			PrimaryIp:   "192.168.1.1",
@@ -533,6 +563,7 @@ func (mf tMetaFetcher) GetServices() ([]metadata.Service, error) {
 
 	c = metadata.Container{
 		Name:        "regular_container",
+		UUID:        "regular_container",
 		StackName:   "foo",
 		ServiceName: "regularSvc",
 		PrimaryIp:   "192.168.1.1",
@@ -696,14 +727,16 @@ func (mf tMetaFetcher) GetServices() ([]metadata.Service, error) {
 	links = make(map[string]string)
 	links["foo/externalCnameSvc"] = "myaliascname"
 	c1 = metadata.Container{
-		Name:        "client_container",
+		Name:        "client_container1",
+		UUID:        "client_container1",
 		StackName:   "foo",
 		ServiceName: "svcWithLinksAliasCname",
 		PrimaryIp:   "172.17.0.66",
 		State:       "running",
 	}
 	c2 = metadata.Container{
-		Name:        "client_container",
+		Name:        "client_container1",
+		UUID:        "client_container1",
 		StackName:   "foo",
 		ServiceName: "svcWithLinksAliasCname",
 		PrimaryIp:   "172.17.0.77",
@@ -821,7 +854,7 @@ func (mf tMetaFetcher) GetServices() ([]metadata.Service, error) {
 		ServiceName: "primaryn",
 		PrimaryIp:   "192.168.0.11",
 		State:       "running",
-		UUID:        "networkFromPrimary",
+		UUID:        "primaryn",
 	}
 	containers = []metadata.Container{c}
 	primaryn := metadata.Service{
@@ -833,14 +866,16 @@ func (mf tMetaFetcher) GetServices() ([]metadata.Service, error) {
 
 	c = metadata.Container{
 		Name:        "sidekickn",
+		UUID:        "sidekickn",
 		StackName:   "foo",
 		ServiceName: "sidekickn",
 		State:       "running",
-		NetworkFromContainerUUID: "networkFromPrimary",
+		NetworkFromContainerUUID: "primaryn",
 	}
 	containers = []metadata.Container{c}
 	sidekickn := metadata.Service{
 		Name:               "sidekickn",
+		UUID:               "sidekickn",
 		Kind:               "service",
 		StackName:          "foo",
 		PrimaryServiceName: "primaryn",
@@ -854,6 +889,7 @@ func (mf tMetaFetcher) GetServices() ([]metadata.Service, error) {
 func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 	c1 := metadata.Container{
 		Name:        "clientip1",
+		UUID:        "clientip1",
 		StackName:   "foo",
 		ServiceName: "clientip1Svc",
 		PrimaryIp:   "172.17.0.2",
@@ -863,6 +899,7 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 
 	c2 := metadata.Container{
 		Name:        "clientip1",
+		UUID:        "clientip1",
 		StackName:   "foo",
 		ServiceName: "svcWithLinks",
 		PrimaryIp:   "172.17.0.3",
@@ -872,6 +909,7 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 
 	c3 := metadata.Container{
 		Name:        "clientip1",
+		UUID:        "clientip1",
 		StackName:   "foo",
 		ServiceName: "svcWithLinks",
 		PrimaryIp:   "172.17.0.4",
@@ -880,6 +918,7 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 	}
 	c4 := metadata.Container{
 		Name:        "client_container",
+		UUID:        "client_container",
 		StackName:   "foo",
 		ServiceName: "svcWithLinksAlias",
 		PrimaryIp:   "172.17.0.6",
@@ -888,6 +927,7 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 	}
 	c5 := metadata.Container{
 		Name:        "client_container",
+		UUID:        "client_container",
 		StackName:   "foo",
 		ServiceName: "svcWithLinksAlias",
 		PrimaryIp:   "172.17.0.7",
@@ -896,12 +936,14 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 	}
 	c6 := metadata.Container{
 		Name:      "clientStandalone",
+		UUID:      "clientStandalone",
 		PrimaryIp: "172.17.0.10",
 		State:     "running",
 		DnsSearch: []string{"regularSvc.rancher.internal", "foo.rancher.internal", "rancher.internal"},
 	}
 	c7 := metadata.Container{
 		Name:        "clientKubernetes",
+		UUID:        "clientKubernetes",
 		StackName:   "foo",
 		ServiceName: "clientKubernetes",
 		PrimaryIp:   "172.17.0.11",
@@ -910,6 +952,7 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 
 	c8 := metadata.Container{
 		Name:        "clientKubernetesVip",
+		UUID:        "clientKubernetesVip",
 		StackName:   "foo",
 		ServiceName: "clientKubernetesVip",
 		PrimaryIp:   "172.17.0.12",
@@ -918,6 +961,7 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 
 	c9 := metadata.Container{
 		Name:        "clientKubernetesVip",
+		UUID:        "clientKubernetesVip",
 		StackName:   "foo",
 		ServiceName: "clientKubernetesVip",
 		PrimaryIp:   "192.168.0.33",
@@ -925,6 +969,7 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 	}
 	c10 := metadata.Container{
 		Name:        "healthEmpty1",
+		UUID:        "healthEmpty1",
 		StackName:   "foo",
 		ServiceName: "healthEmpty",
 		PrimaryIp:   "192.168.0.33",
@@ -933,35 +978,38 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 
 	c11 := metadata.Container{
 		Name:      "networkFromMaster",
+		UUID:      "networkFromMaster",
 		PrimaryIp: "192.168.0.34",
 		State:     "running",
-		UUID:      "networkFromMaster",
 	}
 	c12 := metadata.Container{
 		Name:  "networkFromChild",
+		UUID:  "networkFromChild",
 		State: "running",
 		NetworkFromContainerUUID: "networkFromMaster",
 	}
 
 	c13 := metadata.Container{
 		Name:        "sidekickn",
+		UUID:        "sidekickn",
 		StackName:   "foo",
 		ServiceName: "sidekickn",
 		State:       "running",
-		NetworkFromContainerUUID: "networkFromPrimary",
+		NetworkFromContainerUUID: "primaryn",
 	}
 
 	c14 := metadata.Container{
 		Name:        "primaryn",
+		UUID:        "primaryn",
 		StackName:   "foo",
 		ServiceName: "primaryn",
 		PrimaryIp:   "192.168.0.11",
 		State:       "running",
-		UUID:        "networkFromPrimary",
 	}
 
 	c15 := metadata.Container{
-		Name:        "client_container",
+		Name:        "client_container1",
+		UUID:        "client_container1",
 		StackName:   "foo",
 		ServiceName: "svcWithLinksAliasCname",
 		PrimaryIp:   "172.17.0.66",
@@ -969,31 +1017,52 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		DnsSearch:   []string{"svcWithLinksAliasCname.rancher.internal", "foo.rancher.internal", "rancher.internal"},
 	}
 	c16 := metadata.Container{
-		Name:        "client_container",
+		Name:        "client_container2",
+		UUID:        "client_container2",
 		StackName:   "foo",
 		ServiceName: "svcWithLinksAliasCname",
 		PrimaryIp:   "172.17.0.77",
 		State:       "running",
 		DnsSearch:   []string{"svcWithLinksAliasCname.rancher.internal", "foo.rancher.internal", "rancher.internal"},
 	}
-
+	links := make(map[string]string)
+	links["containerLink"] = "regular_container"
 	c17 := metadata.Container{
+		Name:      "client_container777",
+		UUID:      "client_container777",
+		PrimaryIp: "172.17.0.777",
+		State:     "running",
+		Links:     links,
+	}
+
+	c18 := metadata.Container{
+		Name:        "regular_container",
+		UUID:        "regular_container",
+		StackName:   "foo",
+		ServiceName: "regularSvc",
+		PrimaryIp:   "192.168.1.1",
+		State:       "running",
+	}
+
+	c19 := metadata.Container{
 		Name:        "healthEmpty2",
+		UUID:        "healthEmpty2",
 		StackName:   "foo",
 		ServiceName: "healthEmpty",
 		PrimaryIp:   "192.168.0.34",
 		State:       "running",
 	}
 
-	c18 := metadata.Container{
+	c20 := metadata.Container{
 		Name:        "healthEmpty3",
+		UUID:        "healthEmpty3",
 		StackName:   "foo",
 		ServiceName: "healthEmpty",
 		PrimaryIp:   "192.168.0.35",
 		State:       "running",
 	}
 
-	containers := []metadata.Container{c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15, c16, c17, c18}
+	containers := []metadata.Container{c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20}
 	return containers, nil
 }
 

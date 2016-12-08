@@ -44,7 +44,7 @@ func (c *ConfigGenerator) Init(metadataServer *string) error {
 
 func (c *ConfigGenerator) GenerateAnswers() (Answers, error) {
 	answers := make(Answers)
-	aRecs, cRecs, clientIpsToLinks, clientIpToContainer, svcNameToSvc, err := c.GetRecords()
+	aRecs, cRecs, clientIpsToServiceLinks, clientIpsToContainerLinks, clientIpToContainer, svcNameToSvc, err := c.GetRecords()
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func (c *ConfigGenerator) GenerateAnswers() (Answers, error) {
 	for clientIp, container := range clientIpToContainer {
 		cARecs := make(map[string]RecordA)
 		cCnameRecs := make(map[string]RecordCname)
-		for key, linkAlias := range clientIpsToLinks[clientIp] {
+		for key, linkAlias := range clientIpsToServiceLinks[clientIp] {
 			if strings.EqualFold(key, linkAlias) {
 				// skip non-aliased service links
 				// they are present in defaults
@@ -72,6 +72,14 @@ func (c *ConfigGenerator) GenerateAnswers() (Answers, error) {
 				cCnameRecs[getLinkGlobalFqdn(linkAlias, &linkedService)] = cRecs[linkServiceFqdn]
 			}
 		}
+
+		for linkName, targetIp := range clientIpsToContainerLinks[clientIp] {
+			aRec := RecordA{
+				Answer: []string{targetIp},
+			}
+			cARecs[getLinkGlobalFqdn(linkName, nil)] = aRec
+		}
+
 		search := []string{}
 		recurse := []string{}
 		if container.DnsSearch != nil {
@@ -115,25 +123,26 @@ func (c *ConfigGenerator) GenerateAnswers() (Answers, error) {
 	return answers, nil
 }
 
-func (c *ConfigGenerator) GetRecords() (map[string]RecordA, map[string]RecordCname, map[string]map[string]string, map[string]metadata.Container, map[string]metadata.Service, error) {
+func (c *ConfigGenerator) GetRecords() (map[string]RecordA, map[string]RecordCname, map[string]map[string]string, map[string]map[string]string, map[string]metadata.Container, map[string]metadata.Service, error) {
 	aRecs := make(map[string]RecordA)
 	cRecs := make(map[string]RecordCname)
-	clientIpsToLinks := make(map[string]map[string]string)
+	clientIpsToServiceLinks := make(map[string]map[string]string)
 	clientIpToContainer := make(map[string]metadata.Container)
 	svcNameToSvc := make(map[string]metadata.Service)
+	clientIpsToContainerLinks := make(map[string]map[string]string)
 
 	services, err := c.metaFetcher.GetServices()
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 	containers, err := c.metaFetcher.GetContainers()
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 
 	host, err := c.metaFetcher.GetSelfHost()
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 
 	uuidToPrimaryIp := make(map[string]string)
@@ -149,7 +158,7 @@ func (c *ConfigGenerator) GetRecords() (map[string]RecordA, map[string]RecordCna
 		svcNameToSvc[fmt.Sprintf("%s/%s", svc.StackName, svc.Name)] = svc
 		records, err := c.getServiceEndpoints(&svc, uuidToPrimaryIp)
 		if err != nil {
-			return nil, nil, nil, nil, nil, err
+			return nil, nil, nil, nil, nil, nil, err
 		}
 		for i, rec := range records {
 			if rec.IsCname {
@@ -203,6 +212,8 @@ func (c *ConfigGenerator) GetRecords() (map[string]RecordA, map[string]RecordCna
 		}
 	}
 
+	containerUUIDToContainerIP := make(map[string]string)
+	var cWithIps []metadata.Container
 	for _, c := range containers {
 		primaryIP := c.PrimaryIp
 		if primaryIP == "" && c.NetworkFromContainerUUID != "" {
@@ -213,6 +224,12 @@ func (c *ConfigGenerator) GetRecords() (map[string]RecordA, map[string]RecordCna
 			continue
 		}
 
+		containerUUIDToContainerIP[c.UUID] = primaryIP
+		cWithIps = append(cWithIps, c)
+	}
+
+	for _, c := range cWithIps {
+		primaryIP := containerUUIDToContainerIP[c.UUID]
 		aRec := RecordA{
 			Answer: []string{primaryIP},
 		}
@@ -225,9 +242,20 @@ func (c *ConfigGenerator) GetRecords() (map[string]RecordA, map[string]RecordCna
 		//client section only for the containers running on the same host
 		if c.HostUUID == host.UUID && c.PrimaryIp != "" {
 			if svc.Name != "" {
-				clientIpsToLinks[c.PrimaryIp] = svc.Links
+				clientIpsToServiceLinks[c.PrimaryIp] = svc.Links
 			}
 			clientIpToContainer[c.PrimaryIp] = c
+
+			//get container links
+			containerLinks := make(map[string]string)
+			for linkName, linkedContainerUUID := range c.Links {
+				targetIP := containerUUIDToContainerIP[linkedContainerUUID]
+				if targetIP == "" {
+					continue
+				}
+				containerLinks[linkName] = targetIP
+			}
+			clientIpsToContainerLinks[c.PrimaryIp] = containerLinks
 		}
 	}
 
@@ -238,7 +266,7 @@ func (c *ConfigGenerator) GetRecords() (map[string]RecordA, map[string]RecordCna
 	//add to the service record
 	aRecs[fmt.Sprintf("rancher-metadata.%s.", getDefaultRancherNamespace())] = aRec
 
-	return aRecs, cRecs, clientIpsToLinks, clientIpToContainer, svcNameToSvc, nil
+	return aRecs, cRecs, clientIpsToServiceLinks, clientIpsToContainerLinks, clientIpToContainer, svcNameToSvc, nil
 }
 
 func getGlobalRecurse() ([]string, error) {
@@ -286,7 +314,10 @@ func getServiceFqdn(s *metadata.Service) string {
 }
 
 func getLinkGlobalFqdn(linkName string, s *metadata.Service) string {
-	return strings.ToLower(fmt.Sprintf("%s.%s.", linkName, getServiceGlobalNamespace(s)))
+	if s != nil {
+		return strings.ToLower(fmt.Sprintf("%s.%s.", linkName, getServiceGlobalNamespace(s)))
+	}
+	return strings.ToLower(fmt.Sprintf("%s.%s.", linkName, getDefaultRancherNamespace()))
 }
 
 func getLinkStackFqdn(linkName string, s *metadata.Service) string {
