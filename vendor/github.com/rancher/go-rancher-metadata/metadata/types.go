@@ -63,6 +63,7 @@ type Container struct {
 	HealthCheckHosts         []string          `json:"health_check_hosts"`
 	NetworkFromContainerUUID string            `json:"network_from_container_uuid"`
 	NetworkUUID              string            `json:"network_uuid"`
+	Links                    map[string]string `json:"links"`
 }
 
 type Network struct {
@@ -70,6 +71,7 @@ type Network struct {
 	UUID      string                 `json:"uuid"`
 	Metadata  map[string]interface{} `json:"metadata"`
 	HostPorts bool                   `json:"host_ports"`
+	Default   bool                   `json:"is_default"`
 }
 
 type Host struct {
