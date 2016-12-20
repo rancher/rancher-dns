@@ -53,6 +53,17 @@ func (c *ConfigGenerator) GenerateAnswers() (Answers, error) {
 	for clientIp, container := range clientIpToContainer {
 		cARecs := make(map[string]RecordA)
 		cCnameRecs := make(map[string]RecordCname)
+
+		// 1. set container links
+		for linkName, targetIp := range clientIpsToContainerLinks[clientIp] {
+			aRec := RecordA{
+				Answer: []string{targetIp},
+			}
+			cARecs[getLinkGlobalFqdn(linkName, nil)] = aRec
+		}
+
+		// 2. set service links
+		// note that service link overrides the container link (if the names collide)
 		for key, linkAlias := range clientIpsToServiceLinks[clientIp] {
 			if strings.EqualFold(key, linkAlias) {
 				// skip non-aliased service links
@@ -61,23 +72,18 @@ func (c *ConfigGenerator) GenerateAnswers() (Answers, error) {
 			}
 			linkedService := svcNameToSvc[key]
 			linkServiceFqdn := getServiceFqdn(&linkedService)
+			globalAliasName := getLinkGlobalFqdn(linkAlias, &linkedService)
+			stackAliasName := getLinkStackFqdn(linkAlias, &linkedService)
 			if _, ok := aRecs[linkServiceFqdn]; ok {
 				//we store 2 A records for link:
 				// a) linkName.namespace
 				// b) linkName.stackName.namespace
-				cARecs[getLinkStackFqdn(linkAlias, &linkedService)] = aRecs[linkServiceFqdn]
-				cARecs[getLinkGlobalFqdn(linkAlias, &linkedService)] = aRecs[linkServiceFqdn]
+				cARecs[stackAliasName] = aRecs[linkServiceFqdn]
+				cARecs[globalAliasName] = aRecs[linkServiceFqdn]
 			} else if _, ok := cRecs[linkServiceFqdn]; ok {
-				cCnameRecs[getLinkStackFqdn(linkAlias, &linkedService)] = cRecs[linkServiceFqdn]
-				cCnameRecs[getLinkGlobalFqdn(linkAlias, &linkedService)] = cRecs[linkServiceFqdn]
+				cCnameRecs[stackAliasName] = cRecs[linkServiceFqdn]
+				cCnameRecs[globalAliasName] = cRecs[linkServiceFqdn]
 			}
-		}
-
-		for linkName, targetIp := range clientIpsToContainerLinks[clientIp] {
-			aRec := RecordA{
-				Answer: []string{targetIp},
-			}
-			cARecs[getLinkGlobalFqdn(linkName, nil)] = aRec
 		}
 
 		search := []string{}
