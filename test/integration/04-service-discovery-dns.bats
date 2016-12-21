@@ -3,7 +3,6 @@
 load test_helper
 
 @test "Returns NXDOMAIN for query referencing non-existing service" {
-  skip "Needs to be fixed"
   run resolve no-service.no-stack.rancher.internal A
   log $output
   [ $status -eq 0 ]

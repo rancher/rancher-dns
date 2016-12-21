@@ -3,7 +3,6 @@
 load test_helper
 
 @test "Sets RA flag in authoritative response when recursion requested" {
-  skip "Needs to be fixed"
   run resolve x.rancher.internal A
   log $output
   [ $status -eq 0 ]
@@ -39,7 +38,6 @@ load test_helper
 
 # RFC 1035
 @test "Returns NXDOMAIN response when the name does not exist" {
-  skip "Needs to be fixed"
   run resolve nonexisting.rancher.internal A
   log $output
   [ $status -eq 0 ]

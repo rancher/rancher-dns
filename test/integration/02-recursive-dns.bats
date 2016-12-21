@@ -18,7 +18,6 @@ load test_helper
 }
 
 @test "Recursive queries (AAAA)" {
-  skip "Needs to be fixed"
   # NOERROR
   run resolve www.example.com AAAA
   log $output
