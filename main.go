@@ -232,7 +232,6 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 	// Internets only
 	if question.Qclass != dns.ClassINET {
 		m.Authoritative = false
-		m.RecursionDesired = false
 		m.RecursionAvailable = false
 		m.Rcode = dns.RcodeNotImplemented
 		w.WriteMsg(m)
@@ -243,7 +242,6 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 	// ANY queries are bad, mmmkay...
 	if question.Qtype == dns.TypeANY {
 		m.Authoritative = false
-		m.RecursionDesired = false
 		m.RecursionAvailable = false
 		m.Rcode = dns.RcodeNotImplemented
 		w.WriteMsg(m)
@@ -270,49 +268,43 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 		return
 	}
 
-	// A records may return CNAME answer(s) plus A answer(s)
-	if question.Qtype == dns.TypeA {
-		found, ok := answers.Addresses(clientIp, fqdn, nil, 1)
-		if ok && len(found) > 0 {
-			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn, "answers": len(found)}).Debug("Answered locally")
+	// Try to find a matching record in the config
+	found, ok := answers.Addresses(question.Qtype, clientIp, fqdn, nil, 1)
+	if ok {
+		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn, "answers": len(found)}).Debug("Answered locally")
+		if len(found) > 0 {
 			m.Answer = found
-			addToClientSpecificCache(clientIp, req, m)
-			Respond(w, req, m)
-			return
-		}
-	} else {
-		// Specific request for another kind of record
-		keys := []string{clientIp, DEFAULT_KEY}
-		for _, key := range keys {
-			// Client-specific answers
-			found, ok := answers.Matching(question.Qtype, key, fqdn)
-			if ok {
-				log.WithFields(log.Fields{"client": key, "type": rrString, "question": fqdn, "answers": len(found)}).Debug("Answered from config for ", key)
-				m.Answer = found
-				addToClientSpecificCache(clientIp, req, m)
-				Respond(w, req, m)
-				return
+		} else {
+			// If the name is valid but there are no records of the
+			// requested type, send back a NODATA response (RFC2308)
+			domain, authoritative := answers.IsAuthoritativeDomain(fqdn)
+			if !authoritative {
+				domain = fqdn
 			}
+			m.Ns = []dns.RR{soa(domain)}
+			m.Ns[0].Header().Ttl = uint32(*defaultTtl)
 		}
-
-		log.Debug("No match found in config")
+		addToClientSpecificCache(clientIp, req, m)
+		Respond(w, req, m)
+		return
 	}
 
-	// If we are authoritative for a suffix the label has, there's no point trying the recursive DNS
-	authoritativeFor := answers.AuthoritativeSuffixes()
-	for _, suffix := range authoritativeFor {
-		if strings.HasSuffix(fqdn, suffix) {
-			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debugf("Not answered locally, but I am authoritative for %s", suffix)
-			m.Authoritative = true
-			m.RecursionAvailable = false
-			me := strings.TrimLeft(suffix, ".")
-			hdr := dns.RR_Header{Name: me, Rrtype: dns.TypeSOA, Class: dns.ClassINET, Ttl: uint32(*defaultTtl)}
-			serial++
-			record := &dns.SOA{Hdr: hdr, Ns: me, Mbox: me, Serial: serial, Refresh: 60, Retry: 10, Expire: 86400, Minttl: 1}
-			m.Ns = append(m.Ns, record)
-			Respond(w, req, m)
-			return
-		}
+	log.Debug("No match found in config")
+
+	// If we are authoritative for the suffix but the queried name
+	// does not exist, send back a NXDOMAIN response (RFC1035 4.1.1)
+	domain, authoritative := answers.IsAuthoritativeDomain(fqdn)
+	if authoritative {
+		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).
+			Debugf("Name does not exist, but I am authoritative for %s", domain)
+		m := new(dns.Msg)
+		m.SetRcode(req, dns.RcodeNameError)
+		m.Authoritative = true
+		m.RecursionAvailable = true
+		m.Ns = []dns.RR{soa(domain)}
+		m.Ns[0].Header().Ttl = uint32(*defaultTtl)
+		Respond(w, req, m)
+		return
 	}
 
 	// Phone a friend - Forward original query
@@ -320,19 +312,10 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 	if err == nil {
 		msg.Compress = true
 		msg.Id = req.Id
-
-		// We don't support AAAA, but an NXDOMAIN from the recursive resolver
-		// doesn't necessarily mean there are never any records for that domain,
-		// so rewrite the response code to NOERROR.
-		if (question.Qtype == dns.TypeAAAA) && (msg.Rcode == dns.RcodeNameError) {
-			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Rewrote AAAA NXDOMAIN to NOERROR")
-			msg.Rcode = dns.RcodeSuccess
-		}
-
 		addToGlobalCache(req, msg)
-
 		Respond(w, req, msg)
-		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent recursive response")
+		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn, "rcode": dns.RcodeToString[msg.Rcode]}).
+			Debug("Sent recursive response")
 		return
 	}
 
@@ -344,4 +327,24 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 func isTcp(w dns.ResponseWriter) bool {
 	_, ok := w.RemoteAddr().(*net.TCPAddr)
 	return ok
+}
+
+// soa returns a suitable SOA resource record for the specified domain
+func soa(domain string) dns.RR {
+	serial++
+	return &dns.SOA{
+		Hdr: dns.RR_Header{
+			Name:   domain,
+			Rrtype: dns.TypeSOA,
+			Class:  dns.ClassINET,
+			Ttl:    uint32(*defaultTtl),
+		},
+		Ns:      "ns.dns." + domain,
+		Mbox:    "hostmaster." + domain,
+		Serial:  serial,
+		Refresh: 28800,
+		Retry:   7200,
+		Expire:  604800,
+		Minttl:  300,
+	}
 }

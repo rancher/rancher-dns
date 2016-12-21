@@ -72,10 +72,23 @@ func (answers *Answers) AuthoritativeSuffixes() []string {
 	return suffixes
 }
 
-func (answers *Answers) Addresses(clientIp string, fqdn string, cnameParents []dns.RR, depth int) (records []dns.RR, ok bool) {
-	fqdn = dns.Fqdn(fqdn)
+// Checks whether the specified FQDN is under a domain that
+// we are authoritative for and if so returns that domain
+func (answers *Answers) IsAuthoritativeDomain(fqdn string) (string, bool) {
+	authoritativeFor := answers.AuthoritativeSuffixes()
+	for _, suffix := range authoritativeFor {
+		if strings.HasSuffix(fqdn, suffix) {
+			domain := strings.TrimLeft(suffix, ".")
+			return domain, true
+		}
+	}
 
-	log.WithFields(log.Fields{"fqdn": fqdn, "client": clientIp, "depth": depth}).Debug("Trying to resolve addresses")
+	return "", false
+}
+
+func (answers *Answers) Addresses(qtype uint16, clientIp string, fqdn string, cnameParents []dns.RR, depth int) (records []dns.RR, ok bool) {
+	fqdn = dns.Fqdn(fqdn)
+	log.WithFields(log.Fields{"fqdn": fqdn, "qtype": dns.Type(qtype).String(), "client": clientIp, "depth": depth}).Debug("Trying to resolve addresses")
 
 	// Limit recursing for non-obvious loops
 	if len(cnameParents) >= MAX_DEPTH {
@@ -96,37 +109,43 @@ func (answers *Answers) Addresses(clientIp string, fqdn string, cnameParents []d
 			return nil, false
 		}
 
-		// Recurse to find the eventual A for this CNAME
-		children, ok := answers.Addresses(clientIp, dns.Fqdn(cname.Target), append(cnameParents, cname), depth+1)
-		if ok && len(children) > 0 {
-			log.WithFields(log.Fields{"fqdn": fqdn, "target": cname.Target, "client": clientIp, "depth": depth}).Debug("Resolved CNAME ", children)
+		// Recurse to resolve the target for this CNAME
+		children, ok := answers.Addresses(qtype, clientIp, dns.Fqdn(cname.Target), append(cnameParents, cname), depth+1)
+		if ok {
+			log.WithFields(log.Fields{"fqdn": fqdn, "qtype": dns.Type(qtype).String(), "target": cname.Target, "client": clientIp, "depth": depth}).
+				Debug("Resolved CNAME ", children)
 			records = append(records, cname)
 			records = append(records, children...)
 			return records, true
 		}
 	}
 
-	// Look for an A entry
-	log.WithFields(log.Fields{"fqdn": fqdn, "client": clientIp, "depth": depth}).Debug("Trying A Records")
-	result, ok = answers.Matching(dns.TypeA, clientIp, fqdn)
-	if ok && len(result) > 0 {
-		log.WithFields(log.Fields{"fqdn": fqdn, "client": clientIp, "depth": depth}).Debug("Matched A ", result)
-		shuffle(&result)
+	// Look for a matching record entry
+	log.WithFields(log.Fields{"fqdn": fqdn, "qtype": dns.Type(qtype).String(), "client": clientIp, "depth": depth}).Debug("Trying Qtype records")
+	result, ok = answers.Matching(qtype, clientIp, fqdn)
+	if ok {
+		if len(result) > 0 {
+			shuffle(&result)
+			log.WithFields(log.Fields{"fqdn": fqdn, "qtype": dns.Type(qtype).String(), "client": clientIp, "depth": depth}).Debug("Matched record ", result)
+		} else {
+			log.WithFields(log.Fields{"fqdn": fqdn, "qtype": dns.Type(qtype).String(), "client": clientIp, "depth": depth}).Debug("Matched name but not type")
+		}
+
 		return result, true
 	}
 
 	// When resolving CNAMES, check recursive server
 	if len(cnameParents) > 0 {
-		log.WithFields(log.Fields{"fqdn": fqdn, "client": clientIp, "depth": depth}).Debug("Trying recursive servers")
+		log.WithFields(log.Fields{"fqdn": fqdn, "qtype": dns.Type(qtype).String(), "client": clientIp, "depth": depth}).Debug("Trying recursive servers")
 		r := new(dns.Msg)
-		r.SetQuestion(fqdn, dns.TypeA)
+		r.SetQuestion(fqdn, qtype)
 		msg, err := ResolveTryAll(r, answers.Recursers(clientIp))
 		if err == nil {
 			return msg.Answer, true
 		}
 	}
 
-	log.WithFields(log.Fields{"fqdn": fqdn, "client": clientIp, "depth": depth}).Debug("Did not match anything")
+	log.WithFields(log.Fields{"fqdn": fqdn, "qtype": dns.Type(qtype).String(), "client": clientIp, "depth": depth}).Debug("Did not match anything")
 	return nil, false
 }
 
@@ -140,12 +159,11 @@ func (answers *Answers) Matching(qtype uint16, clientIp string, label string) (r
 		}
 	}
 
-	// If we are authoritative for a suffix the label has, there's no point trying alternate search suffixes
-	var clientSearches []string
-	if authoritative {
-		clientSearches = []string{}
-	} else {
+	// Only do a search if the name does not have a suffix for which we are authoritative
+	var clientSearches, defaultSearches []string
+	if !authoritative {
 		clientSearches = answers.SearchSuffixes(clientIp)
+		defaultSearches = answers.SearchSuffixes(DEFAULT_KEY)
 	}
 
 	// Client answers, client search
@@ -164,7 +182,6 @@ func (answers *Answers) Matching(qtype uint16, clientIp string, label string) (r
 
 	// Default answers, default search
 	log.WithFields(log.Fields{"label": label, "client": clientIp}).Debug("Trying default answers, default search")
-	defaultSearches := answers.SearchSuffixes(DEFAULT_KEY)
 	records, ok = answers.MatchingSearch(qtype, DEFAULT_KEY, label, defaultSearches)
 	if ok {
 		return
@@ -272,13 +289,33 @@ func (answers *Answers) MatchingExact(qtype uint16, clientIp string, fqdn string
 				}
 			}
 		}
+
+		if len(records) > 0 {
+			return records, true
+		}
+
+		// Check whether there are any records for that name at all
+		// and if so return the empty records slice and the bool set
+		// to True. This allows the caller to determine if the name
+		// is non-existent or if there is just no data for the type.
+		if _, ok := client.A[fqdn]; ok {
+			return records, true
+		}
+
+		if _, ok := client.Cname[fqdn]; ok {
+			return records, true
+		}
+
+		if _, ok := client.Ptr[fqdn]; ok {
+			return records, true
+		}
+
+		if _, ok := client.Txt[fqdn]; ok {
+			return records, true
+		}
 	}
 
-	if len(records) > 0 {
-		return records, true
-	} else {
-		return nil, false
-	}
+	return nil, false
 }
 
 func shuffle(items *[]dns.RR) {
