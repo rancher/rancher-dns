@@ -3,10 +3,16 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/Sirupsen/logrus"
-	"github.com/rancher/go-rancher-metadata/metadata"
 	"os"
 	"strings"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/rancher/go-rancher-metadata/metadata"
+)
+
+var (
+	rancherDNS      = "169.254.169.250"
+	fallbackRecurse = []string{"8.8.8.8", "8.8.4.4"}
 )
 
 type MetadataFetcher interface {
@@ -94,7 +100,7 @@ func (c *ConfigGenerator) GenerateAnswers() (Answers, error) {
 		if container.Dns != nil {
 			//exclude 169.254.169.250
 			for _, dns := range container.Dns {
-				if strings.EqualFold(dns, "169.254.169.250") {
+				if invalidRecurse(dns) {
 					continue
 				}
 				recurse = append(recurse, dns)
@@ -127,6 +133,10 @@ func (c *ConfigGenerator) GenerateAnswers() (Answers, error) {
 	answers["default"] = a
 
 	return answers, nil
+}
+
+func invalidRecurse(dns string) bool {
+	return dns == rancherDNS || strings.HasPrefix(dns, "127.")
 }
 
 func (c *ConfigGenerator) GetRecords() (map[string]RecordA, map[string]RecordCname, map[string]map[string]string, map[string]map[string]string, map[string]metadata.Container, map[string]metadata.Service, error) {
@@ -267,7 +277,7 @@ func (c *ConfigGenerator) GetRecords() (map[string]RecordA, map[string]RecordCna
 
 	// add metadata record
 	aRec := RecordA{
-		Answer: []string{"169.254.169.250"},
+		Answer: []string{rancherDNS},
 	}
 	//add to the service record
 	aRecs[fmt.Sprintf("rancher-metadata.%s.", getDefaultRancherNamespace())] = aRec
@@ -289,9 +299,18 @@ func getGlobalRecurse() ([]string, error) {
 		l := scanner.Text()
 		l = strings.TrimSpace(l)
 		if strings.HasPrefix(l, "nameserver") {
-			recurse = append(recurse, strings.TrimSpace(l[11:len(l)]))
+			dns := strings.TrimSpace(l[11:len(l)])
+			if invalidRecurse(dns) {
+				continue
+			}
+			recurse = append(recurse, dns)
 		}
 	}
+
+	if len(recurse) == 0 {
+		return fallbackRecurse, nil
+	}
+
 	return recurse, nil
 }
 
