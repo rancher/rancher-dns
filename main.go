@@ -317,7 +317,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 
 	// Phone a friend - Forward original query
 	msg, err := ResolveTryAll(req, answers.Recursers(clientIp))
-	if err == nil {
+	if err == nil && msg != nil {
 		msg.Compress = true
 		msg.Id = req.Id
 

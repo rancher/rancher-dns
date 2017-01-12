@@ -10,7 +10,7 @@ func ResolveTryAll(req *dns.Msg, resolvers []string) (resp *dns.Msg, err error) 
 	for _, resolver := range resolvers {
 		log.WithFields(log.Fields{"fqdn": req.Question[0].Name, "resolver": resolver}).Debug("Recursing")
 		resp, err = Resolve(req, resolver)
-		if err == nil {
+		if err == nil && resp != nil {
 			break
 		}
 	}
