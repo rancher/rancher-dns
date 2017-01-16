@@ -11,7 +11,6 @@ import (
 )
 
 var (
-	rancherDNS      = "169.254.169.250"
 	fallbackRecurse = []string{"8.8.8.8", "8.8.4.4"}
 )
 
@@ -136,7 +135,7 @@ func (c *ConfigGenerator) GenerateAnswers() (Answers, error) {
 }
 
 func invalidRecurse(dns string) bool {
-	return dns == rancherDNS || strings.HasPrefix(dns, "127.")
+	return dns == *rancherDNS || strings.HasPrefix(dns, "127.")
 }
 
 func (c *ConfigGenerator) GetRecords() (map[string]RecordA, map[string]RecordCname, map[string]map[string]string, map[string]map[string]string, map[string]metadata.Container, map[string]metadata.Service, error) {
@@ -277,7 +276,7 @@ func (c *ConfigGenerator) GetRecords() (map[string]RecordA, map[string]RecordCna
 
 	// add metadata record
 	aRec := RecordA{
-		Answer: []string{rancherDNS},
+		Answer: strings.Split(*metadataAddress, ","),
 	}
 	//add to the service record
 	aRecs[fmt.Sprintf("rancher-metadata.%s.", getDefaultRancherNamespace())] = aRec
