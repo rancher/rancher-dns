@@ -161,6 +161,8 @@ func (c *ConfigGenerator) GetRecords() (map[string]RecordA, map[string]RecordCna
 		return nil, nil, nil, nil, nil, nil, err
 	}
 
+	selfEnvironmentUUID := host.EnvironmentUUID
+
 	uuidToPrimaryIp := make(map[string]string)
 	for _, c := range containers {
 		if c.PrimaryIp == "" {
@@ -171,6 +173,10 @@ func (c *ConfigGenerator) GetRecords() (map[string]RecordA, map[string]RecordCna
 
 	// get service records
 	for _, svc := range services {
+		// only fetch services from the same environment
+		if svc.EnvironmentUUID != selfEnvironmentUUID {
+			continue
+		}
 		svcNameToSvc[fmt.Sprintf("%s/%s", svc.StackName, svc.Name)] = svc
 		records, err := c.getServiceEndpoints(&svc, uuidToPrimaryIp)
 		if err != nil {
@@ -237,6 +243,10 @@ func (c *ConfigGenerator) GetRecords() (map[string]RecordA, map[string]RecordCna
 		}
 
 		if primaryIP == "" {
+			continue
+		}
+
+		if c.EnvironmentUUID != selfEnvironmentUUID {
 			continue
 		}
 
