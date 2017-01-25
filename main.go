@@ -25,19 +25,19 @@ import (
 )
 
 var (
-	showVersion     = flag.Bool("version", false, "Show version")
-	debug           = flag.Bool("debug", false, "Debug")
-	listen          = flag.String("listen", ":53", "Address to listen to (TCP and UDP)")
-	listenReload    = flag.String("listenReload", "127.0.0.1:8113", "Address to listen to for reload requests (TCP)")
-	answersFile     = flag.String("answers", "./answers.yaml", "File containing the answers to respond with")
-	defaultTtl      = flag.Uint("ttl", 600, "TTL for answers")
-	ndots           = flag.Uint("ndots", 0, "Queries with more than this number of dots will not use search paths")
-	cacheCapacity   = flag.Uint("cache-capacity", 1000, "Cache capacity")
-	logFile         = flag.String("log", "", "Log file")
-	pidFile         = flag.String("pid-file", "", "PID to write to")
-	metadataServer  = flag.String("metadata-server", "", "Metadata server url")
-	metadataAddress = flag.String("metadata-address", "169.254.169.250", "Metadata IP address(es), comma-delimited (adds static A records)")
-	rancherDNS      = flag.String("dns-server", "169.254.169.250", "Rancher DNS")
+	showVersion    = flag.Bool("version", false, "Show version")
+	debug          = flag.Bool("debug", false, "Debug")
+	listen         = flag.String("listen", ":53", "Address to listen to (TCP and UDP)")
+	listenReload   = flag.String("listenReload", "127.0.0.1:8113", "Address to listen to for reload requests (TCP)")
+	answersFile    = flag.String("answers", "./answers.yaml", "File containing the answers to respond with")
+	defaultTtl     = flag.Uint("ttl", 600, "TTL for answers")
+	ndots          = flag.Uint("ndots", 0, "Queries with more than this number of dots will not use search paths")
+	cacheCapacity  = flag.Uint("cache-capacity", 1000, "Cache capacity")
+	logFile        = flag.String("log", "", "Log file")
+	pidFile        = flag.String("pid-file", "", "PID to write to")
+	metadataServer = flag.String("metadata-server", "", "Metadata server url")
+	metadataAnswer = flag.String("rancher-metadata-answer", "169.254.169.250", "Metadata IP address(es), comma-delimited (adds static A records)")
+	neverRecurseTo = flag.String("never-recurse-to", "169.254.169.250", "Never recurse to IP address(es), comma-delimited")
 
 	answers                   Answers
 	globalCache               *cache.Cache
