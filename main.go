@@ -36,6 +36,8 @@ var (
 	logFile        = flag.String("log", "", "Log file")
 	pidFile        = flag.String("pid-file", "", "PID to write to")
 	metadataServer = flag.String("metadata-server", "", "Metadata server url")
+	metadataAnswer = flag.String("rancher-metadata-answer", "169.254.169.250", "Metadata IP address(es), comma-delimited (adds static A records)")
+	neverRecurseTo = flag.String("never-recurse-to", "169.254.169.250", "Never recurse to IP address(es), comma-delimited")
 
 	answers                   Answers
 	globalCache               *cache.Cache
