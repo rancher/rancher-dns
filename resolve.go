@@ -1,10 +1,10 @@
 package main
 
 import (
+	"errors"
 	log "github.com/Sirupsen/logrus"
 	"github.com/miekg/dns"
 	"strings"
-	"errors"
 )
 
 func ResolveTryAll(req *dns.Msg, resolvers []string) (resp *dns.Msg, err error) {
