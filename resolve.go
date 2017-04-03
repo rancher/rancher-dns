@@ -4,6 +4,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/miekg/dns"
 	"strings"
+	"errors"
 )
 
 func ResolveTryAll(req *dns.Msg, resolvers []string) (resp *dns.Msg, err error) {
@@ -12,7 +13,12 @@ func ResolveTryAll(req *dns.Msg, resolvers []string) (resp *dns.Msg, err error) 
 		resp, err = Resolve(req, resolver)
 
 		// Do not consider SERVFAIL as as a successful response. Move onto the next resolver.
-		if err == nil && resp.Rcode != dns.RcodeServerFailure {
+		// Overwrite err so the result is not cached in event of no successful resolvers.
+		if resp != nil && resp.Rcode == dns.RcodeServerFailure {
+			err = errors.New("resolver responded with SERVFAIL")
+		}
+
+		if err == nil {
 			break
 		}
 	}
