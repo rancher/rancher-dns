@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/miekg/dns"
 	"strings"
@@ -39,7 +41,13 @@ func resolveTransport(req *dns.Msg, transport, resolver string) (resp *dns.Msg, 
 		resolver = resolver + ":53"
 	}
 
-	c := &dns.Client{Net: transport}
+	t := time.Duration(*recurserTimeout) * time.Second
+	c := &dns.Client{
+		Net:          transport,
+		DialTimeout:  t,
+		ReadTimeout:  t,
+		WriteTimeout: t,
+	}
 
 	resp, _, err = c.Exchange(req, resolver)
 	return
