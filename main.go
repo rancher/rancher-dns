@@ -262,12 +262,18 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 	log.WithFields(log.Fields{"question": fqdn, "type": rrString, "client": clientIp, "proto": proto}).Debug("Request")
 
 	if msg := clientSpecificCacheHit(clientIp, req); msg != nil {
+		if len(msg.Answer) > 1 {
+			shuffle(&msg.Answer)
+		}
 		Respond(w, req, msg)
 		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent client-specific cached response")
 		return
 	}
 
 	if msg := globalCacheHit(req); msg != nil {
+		if len(msg.Answer) > 1 {
+			shuffle(&msg.Answer)
+		}
 		Respond(w, req, msg)
 		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent globally cached response")
 		return
@@ -279,6 +285,16 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 		if ok && len(found) > 0 {
 			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn, "answers": len(found)}).Debug("Answered locally")
 			m.Answer = found
+			addToClientSpecificCache(clientIp, req, m)
+			Respond(w, req, m)
+			return
+		}
+	} else if question.Qtype == dns.TypeAAAA {
+		_, ok := answers.Addresses(clientIp, fqdn, nil, 1)
+		if ok {
+			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Answered locally, no error and empty answer")
+			m.Authoritative = true
+			m.Rcode = dns.RcodeSuccess
 			addToClientSpecificCache(clientIp, req, m)
 			Respond(w, req, m)
 			return
@@ -308,6 +324,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debugf("Not answered locally, but I am authoritative for %s", suffix)
 			m.Authoritative = true
 			m.RecursionAvailable = false
+			m.Rcode = dns.RcodeNameError
 			me := strings.TrimLeft(suffix, ".")
 			hdr := dns.RR_Header{Name: me, Rrtype: dns.TypeSOA, Class: dns.ClassINET, Ttl: uint32(*defaultTtl)}
 			serial++
