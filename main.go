@@ -299,7 +299,6 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 			Respond(w, req, m)
 			return
 		}
-
 	} else {
 		// Specific request for another kind of record
 		keys := []string{clientIp, DEFAULT_KEY}
