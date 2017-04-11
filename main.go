@@ -283,6 +283,17 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 			Respond(w, req, m)
 			return
 		}
+	} else if question.Qtype == dns.TypeAAAA {
+		_, ok := answers.Addresses(clientIp, fqdn, nil, 1)
+		if ok {
+			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Answered locally, no error and empty answer")
+			m.Authoritative = true
+			m.Rcode = dns.RcodeSuccess
+			addToClientSpecificCache(clientIp, req, m)
+			Respond(w, req, m)
+			return
+		}
+
 	} else {
 		// Specific request for another kind of record
 		keys := []string{clientIp, DEFAULT_KEY}
@@ -308,6 +319,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debugf("Not answered locally, but I am authoritative for %s", suffix)
 			m.Authoritative = true
 			m.RecursionAvailable = false
+			m.Rcode = dns.RcodeNameError
 			me := strings.TrimLeft(suffix, ".")
 			hdr := dns.RR_Header{Name: me, Rrtype: dns.TypeSOA, Class: dns.ClassINET, Ttl: uint32(*defaultTtl)}
 			serial++
