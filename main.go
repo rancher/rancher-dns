@@ -262,12 +262,18 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 	log.WithFields(log.Fields{"question": fqdn, "type": rrString, "client": clientIp, "proto": proto}).Debug("Request")
 
 	if msg := clientSpecificCacheHit(clientIp, req); msg != nil {
+		if len(msg.Answer) > 1 {
+			shuffle(&msg.Answer)
+		}
 		Respond(w, req, msg)
 		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent client-specific cached response")
 		return
 	}
 
 	if msg := globalCacheHit(req); msg != nil {
+		if len(msg.Answer) > 1 {
+			shuffle(&msg.Answer)
+		}
 		Respond(w, req, msg)
 		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent globally cached response")
 		return
