@@ -40,7 +40,6 @@ load test_helper
 
 # RFC 1035
 @test "Returns NXDOMAIN response when the name does not exist" {
-  skip "Needs to be fixed"
   run resolve nonexisting.rancher.internal A
   log $output
   [ $status -eq 0 ]
