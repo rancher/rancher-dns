@@ -49,9 +49,9 @@ load test_helper
   run resolve www.example.com A
   [ $status -eq 0 ]
   log $output
-  [[ "$output" =~ " rd ra " ]] || false
+  [[ "$output" =~ "rd ra" ]] || false
 
   run resolve subdomain.invalid A
   log $output
-  [[ "$output" =~ " rd ra " ]] || false
+  [[ "$output" =~ "rd ra" ]] || false
 }
