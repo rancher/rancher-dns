@@ -281,10 +281,20 @@ func (answers *Answers) MatchingExact(qtype uint16, clientIp string, fqdn string
 	}
 }
 
+// Shuffles the sub-section of the supplied slice starting from the first A or AAAA record and going
+// until the end. In other words, doesn't shuffle CNAME records at the start of the slice whose order
+// should be maintained.
 func shuffle(items *[]dns.RR) {
+	max := len(*items)
+	foundA := false
 
-	for i := range *items {
-		j := rand.Intn(i + 1)
+	for i := 0; i < max; i++ {
+		record := (*items)[i].Header()
+		if !foundA && record.Rrtype != dns.TypeA && record.Rrtype != dns.TypeAAAA {
+			continue
+		}
+		foundA = true
+		j := i + rand.Intn(max-i)
 		(*items)[i], (*items)[j] = (*items)[j], (*items)[i]
 	}
 }

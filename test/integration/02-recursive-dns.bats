@@ -55,3 +55,26 @@ load test_helper
   log $output
   [[ "$output" =~ " rd ra " ]] || false
 }
+
+@test "Order of CNAME records is maintained in cache-hit responses" {
+  for i in {1..100}; do
+      run resolve graph.facebook.com A
+      log $output
+      [ $status -eq 0 ]
+      [[ "$output" =~ "status: NOERROR" ]] || false
+      [[ "$output" =~ "ANSWER: 3," ]] || false
+      [[ "$output" =~ "graph.facebook.com.".*IN.*CNAME ]] || false
+      [[ "$output" =~ "api.facebook.com.".*IN.*CNAME ]] || false
+      [[ "$output" =~ IN.*A.* ]] || false
+
+      graphFirstIndex=$(strindex "$output" "graph")
+      apiFirstIndex=$(strindex "$output" "api")
+      [[ $graphFirstIndex -lt $apiFirstIndex ]] || false
+  done
+}
+
+# Taken from https://stackoverflow.com/questions/5031764/position-of-a-string-within-a-string-using-linux-shell-script
+strindex() {
+  x="${1%%$2*}"
+  [[ "$x" = "$1" ]] && echo -1 || echo "${#x}"
+}
