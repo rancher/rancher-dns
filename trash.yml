@@ -20,3 +20,7 @@ import:
 - package: gopkg.in/yaml.v2
   version: ca8f6aacaa4072fe5d27388b07162941cd750c65
   repo:    https://github.com/rancher/yaml
+
+- package: gopkg.in/check.v1
+  version: 20d25e2804050c1cd24a7eea1e7a6447dd0e74ec
+  repo:    https://github.com/go-check/check
