@@ -21,7 +21,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 	"github.com/miekg/dns"
-	"github.com/skynetservices/skydns/cache"
+	"github.com/rancher/rancher-dns/cache"
 )
 
 var (

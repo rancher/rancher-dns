@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/miekg/dns"
-	"github.com/skynetservices/skydns/cache"
+	"github.com/rancher/rancher-dns/cache"
 )
 
 func getClientCache(clientIp string) *cache.Cache {
