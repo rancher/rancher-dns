@@ -12,7 +12,7 @@ import (
 
 // Hit returns a dns message from the cache. If the message's TTL is expired nil
 // is returned and the message is removed from the cache.
-func (c *Cache) Hit(question dns.Question, dnssec, tcp bool, msgid uint16) *dns.Msg {
+func (c *Cache) Hit(question dns.Question, dnssec, tcp bool, msgid uint16) (*dns.Msg, time.Time) {
 	key := Key(question, dnssec, tcp)
 	m1, exp, hit := c.Search(key)
 	if hit {
@@ -22,10 +22,10 @@ func (c *Cache) Hit(question dns.Question, dnssec, tcp bool, msgid uint16) *dns.
 			m1.Compress = true
 			// Even if something ended up with the TC bit *in* the cache, set it to off
 			m1.Truncated = false
-			return m1
+			return m1, exp
 		}
 		// Expired! /o\
 		c.Remove(key)
 	}
-	return nil
+	return nil, time.Now()
 }
