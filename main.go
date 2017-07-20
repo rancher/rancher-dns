@@ -266,9 +266,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 			shuffle(&msg.Answer)
 		}
 		var ttl = uint32(-time.Since(exp).Seconds())
-		for i := 0; i < len(msg.Answer); i++ {
-			msg.Answer[i].Header().Ttl = ttl
-		}
+		update(msg, ttl)
 		Respond(w, req, msg)
 		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent client-specific cached response")
 		return
@@ -279,9 +277,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 			shuffle(&msg.Answer)
 		}
 		var ttl = uint32(-time.Since(exp).Seconds())
-		for i := 0; i < len(msg.Answer); i++ {
-			msg.Answer[i].Header().Ttl = ttl
-		}
+		update(msg, ttl)
 		Respond(w, req, msg)
 		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent globally cached response")
 		return
@@ -358,7 +354,17 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 		}
 
 		addToGlobalCache(req, msg)
-
+		if msg, exp := globalCacheHit(req); msg != nil {
+			if len(msg.Answer) > 1 {
+				shuffle(&msg.Answer)
+			}
+			var ttl = uint32(-time.Since(exp).Seconds())
+			update(msg, ttl)
+			Respond(w, req, msg)
+			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent recursive response")
+			return
+		}
+		// For very small TTLs, globalCacheHit above could fail despite adding - respond with the original msg.
 		Respond(w, req, msg)
 		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent recursive response")
 		return
@@ -372,4 +378,10 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 func isTcp(w dns.ResponseWriter) bool {
 	_, ok := w.RemoteAddr().(*net.TCPAddr)
 	return ok
+}
+
+func update(msg *dns.Msg, ttl uint32) {
+	for i := 0; i < len(msg.Answer); i++ {
+		msg.Answer[i].Header().Ttl = ttl
+	}
 }
