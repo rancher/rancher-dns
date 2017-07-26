@@ -1,8 +1,10 @@
 package main
 
 import (
+	"time"
+
 	"github.com/miekg/dns"
-	"github.com/skynetservices/skydns/cache"
+	"github.com/rancher/rancher-dns/cache"
 )
 
 func getClientCache(clientIp string) *cache.Cache {
@@ -27,11 +29,11 @@ func addClientCache(clientIp string) {
 	clientSpecificCachesMutex.Unlock()
 }
 
-func globalCacheHit(req *dns.Msg) *dns.Msg {
+func globalCacheHit(req *dns.Msg) (*dns.Msg, time.Time) {
 	return globalCache.Hit(req.Question[0], false, false, req.MsgHdr.Id)
 }
 
-func clientSpecificCacheHit(clientIp string, req *dns.Msg) *dns.Msg {
+func clientSpecificCacheHit(clientIp string, req *dns.Msg) (*dns.Msg, time.Time) {
 	addClientCache(clientIp)
 	clientCache := getClientCache(clientIp)
 	return clientCache.Hit(req.Question[0], false, false, req.MsgHdr.Id)
@@ -39,14 +41,25 @@ func clientSpecificCacheHit(clientIp string, req *dns.Msg) *dns.Msg {
 
 func addToGlobalCache(req, msg *dns.Msg) {
 	key := cache.Key(req.Question[0], false, false)
-	globalCache.InsertMessage(key, msg)
+
+	var globalTtl = globalCache.GetTTL()
+	var requestTtl = globalTtl
+
+	if len(msg.Answer) > 0 {
+		requestTtl = time.Duration(msg.Answer[0].Header().Ttl) * time.Second
+	}
+	if requestTtl < globalTtl {
+		globalCache.InsertMessage(key, msg, requestTtl)
+	} else {
+		globalCache.InsertMessage(key, msg, globalTtl)
+	}
 }
 
 func addToClientSpecificCache(clientIp string, req, msg *dns.Msg) {
 	addClientCache(clientIp)
 	clientCache := getClientCache(clientIp)
 	key := cache.Key(req.Question[0], false, false)
-	clientCache.InsertMessage(key, msg)
+	clientCache.InsertMessage(key, msg, clientCache.GetTTL())
 }
 
 func clearClientSpecificCaches() {

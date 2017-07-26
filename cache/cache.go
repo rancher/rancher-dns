@@ -70,14 +70,14 @@ func (c *Cache) EvictRandom() {
 
 // InsertMessage inserts a message in the Cache. We will cache it for ttl seconds, which
 // should be a small (60...300) integer.
-func (c *Cache) InsertMessage(s string, msg *dns.Msg) {
+func (c *Cache) InsertMessage(s string, msg *dns.Msg, ttl time.Duration) {
 	if c.capacity <= 0 {
 		return
 	}
 
 	c.Lock()
 	if _, ok := c.m[s]; !ok {
-		c.m[s] = &elem{time.Now().UTC().Add(c.ttl), msg.Copy()}
+		c.m[s] = &elem{time.Now().UTC().Add(ttl), msg.Copy()}
 
 	}
 	c.EvictRandom()
@@ -165,3 +165,5 @@ func KeyRRset(rrs []dns.RR) string {
 
 func packUint16(i uint16) []byte { return []byte{byte(i >> 8), byte(i)} }
 func packUint32(i uint32) []byte { return []byte{byte(i >> 24), byte(i >> 16), byte(i >> 8), byte(i)} }
+
+func (c *Cache) GetTTL() time.Duration { return c.ttl }
