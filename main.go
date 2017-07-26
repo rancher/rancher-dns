@@ -268,13 +268,6 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 		return
 	}
 
-	if msg, exp := globalCacheHit(req); msg != nil {
-		update(msg, exp)
-		Respond(w, req, msg)
-		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent globally cached response")
-		return
-	}
-
 	// A records may return CNAME answer(s) plus A answer(s)
 	if question.Qtype == dns.TypeA {
 		found, ok := answers.Addresses(clientIp, fqdn, nil, 1)
@@ -311,6 +304,13 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 		}
 
 		log.Debug("No match found in config")
+	}
+
+	if msg, exp := globalCacheHit(req); msg != nil {
+		update(msg, exp)
+		Respond(w, req, msg)
+		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent globally cached response")
+		return
 	}
 
 	// If we are authoritative for a suffix the label has, there's no point trying the recursive DNS
