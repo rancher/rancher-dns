@@ -9,24 +9,15 @@ import (
 
 func getClientCache(clientIp string) *cache.Cache {
 	clientSpecificCachesMutex.RLock()
-	cache, ok := clientSpecificCaches[clientIp]
+	clientCache, ok := clientSpecificCaches[clientIp]
 	clientSpecificCachesMutex.RUnlock()
-
-	if ok {
-		return cache
+	if !ok {
+		clientCache = cache.New(int(*cacheCapacity), int(*defaultTtl))
+		clientSpecificCachesMutex.Lock()
+		clientSpecificCaches[clientIp] = clientCache
+		clientSpecificCachesMutex.Unlock()
 	}
-
-	return nil
-}
-
-func addClientCache(clientIp string) {
-	if clientCache := getClientCache(clientIp); clientCache != nil {
-		return
-	}
-
-	clientSpecificCachesMutex.Lock()
-	clientSpecificCaches[clientIp] = cache.New(int(*cacheCapacity), int(*defaultTtl))
-	clientSpecificCachesMutex.Unlock()
+	return clientCache
 }
 
 func globalCacheHit(req *dns.Msg) (*dns.Msg, time.Time) {
@@ -34,9 +25,7 @@ func globalCacheHit(req *dns.Msg) (*dns.Msg, time.Time) {
 }
 
 func clientSpecificCacheHit(clientIp string, req *dns.Msg) (*dns.Msg, time.Time) {
-	addClientCache(clientIp)
-	clientCache := getClientCache(clientIp)
-	return clientCache.Hit(req.Question[0], false, false, req.MsgHdr.Id)
+	return getClientCache(clientIp).Hit(req.Question[0], false, false, req.MsgHdr.Id)
 }
 
 func addToCache(req, msg *dns.Msg, clientIp ...string) {
@@ -44,7 +33,6 @@ func addToCache(req, msg *dns.Msg, clientIp ...string) {
 	if len(clientIp) == 0 {
 		currCache = globalCache
 	} else {
-		addClientCache(clientIp[0])
 		currCache = getClientCache(clientIp[0])
 	}
 	ttl := currCache.GetTTL()
