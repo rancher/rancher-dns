@@ -1,10 +1,11 @@
 package main
 
 import (
-	//"github.com/Sirupsen/logrus"
-	"github.com/rancher/go-rancher-metadata/metadata"
+	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/rancher/go-rancher-metadata/metadata"
 )
 
 var c *ConfigGenerator
@@ -498,7 +499,52 @@ func getRecordCnameFromDefault(answers Answers, fqdn string) RecordCname {
 	return c
 }
 
-func (mf tMetaFetcher) GetService(svcName string, stackName string) (*metadata.Service, error) {
+func (mf tMetaFetcher) GetServiceByEnvironment(envName string, stackName string, svcName string) (metadata.Service, error) {
+	var service metadata.Service
+	var err error
+	return service, err
+}
+
+func (mf tMetaFetcher) GetServiceByRegionEnvironment(regionName string, envName string, stackName string, svcName string) (metadata.Service, error) {
+	var service metadata.Service
+	var err error
+	return service, err
+}
+
+func (mf tMetaFetcher) GetServiceByName(stackName string, svcName string) (metadata.Service, error) {
+	var service metadata.Service
+	if svcName == "regularSvc" && stackName == "foo" {
+		c1 := metadata.Container{
+			Name:        "regular_container",
+			UUID:        "regular_container",
+			StackName:   "foo",
+			ServiceName: "regularSvc",
+			PrimaryIp:   "192.168.1.1",
+			State:       "running",
+		}
+		c2 := metadata.Container{
+			Name:        "regular_container",
+			StackName:   "foo",
+			ServiceName: "regularSvc",
+			PrimaryIp:   "192.168.1.2",
+			State:       "running",
+		}
+		containers := []metadata.Container{c1, c2}
+		return metadata.Service{
+			Name:       "regularSvc",
+			Kind:       "service",
+			StackName:  "foo",
+			Containers: containers,
+		}, nil
+	}
+	return service, nil
+}
+
+func (mf tMetaFetcher) GetService(link string) (*metadata.Service, error) {
+	fmt.Print(link)
+	splitsvcname := strings.Split(link, "/")
+	stackName := splitsvcname[0]
+	svcName := splitsvcname[1]
 	if svcName == "regularSvc" && stackName == "foo" {
 		c1 := metadata.Container{
 			Name:        "regular_container",
