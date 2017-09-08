@@ -76,6 +76,7 @@ type Container struct {
 	EnvironmentUUID          string            `json:"environment_uuid"`
 	HealthCheck              HealthCheck       `json:"health_check"`
 	EnvironmentName          string            `json:"environment_name"`
+	ServiceUUID              string            `json:"service_uuid"`
 }
 
 type Network struct {

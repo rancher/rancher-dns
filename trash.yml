@@ -12,7 +12,7 @@ import:
   version: 1ea25387ff6f684839d82767c1733ff4d4d15d0a
 
 - package: github.com/rancher/go-rancher-metadata
-  version: 2ba6d4e03be9ade600d5320166cb4e2bf4d3c25a
+  version: 915ffe7fc65e9a8a834ec0a06b6ca6deae663402
 
 - package: gopkg.in/yaml.v2
   version: ca8f6aacaa4072fe5d27388b07162941cd750c65
@@ -21,3 +21,6 @@ import:
 - package: gopkg.in/check.v1
   version: 20d25e2804050c1cd24a7eea1e7a6447dd0e74ec
   repo:    https://github.com/go-check/check
+
+- package: github.com/deckarep/golang-set
+  version: b3af78e1d186c53529e3c916055d734665f68121

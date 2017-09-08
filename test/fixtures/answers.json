@@ -1,87 +1,87 @@
 {
    "default":{
       "search":[
-         "rancher.internal"
+         "discover.internal"
       ],
       "recurse":[
          "8.8.8.8",
          "8.8.4.4"
       ],
       "authoritative":[
-         "rancher.internal"
+         "discover.internal"
       ],
       "a":{
-         "stack-a_service-baz_1.rancher.internal.":{
+         "stack-a_service-baz_1.default.discover.internal.":{
             "answer":[
                "10.42.141.123"
             ]
          },
-         "stack-a_service-baz_2.rancher.internal.":{
+         "stack-a_service-baz_2.default.discover.internal.":{
             "answer":[
                "10.42.195.8"
             ]
          },
-         "service-baz.stack-a.rancher.internal.":{
+         "service-baz.stack-a.default.discover.internal.":{
             "answer":[
                "10.42.141.123",
                "10.42.195.8"
             ]
          },
-         "sidekick-bar.service-foo.stack-a.rancher.internal.":{
+         "sidekick-bar.service-foo.stack-a.default.discover.internal.":{
             "answer":[
                "10.42.209.131"
             ]
          },
-         "service-foo.stack-a.rancher.internal.":{
+         "service-foo.stack-a.default.discover.internal.":{
             "answer":[
                "10.42.112.91"
             ]
          },
-         "stack-a_service-foo_1.rancher.internal.":{
+         "stack-a_service-foo_1.default.discover.internal.":{
             "answer":[
                "10.42.112.91"
             ]
          },
-         "sidekick-baz.service-bar.stack-b.rancher.internal.":{
+         "sidekick-baz.service-bar.stack-b.default.discover.internal.":{
             "answer":[
                "10.42.209.120"
             ]
          },
-         "service-bar.stack-b.rancher.internal.":{
+         "service-bar.stack-b.default.discover.internal.":{
             "answer":[
                "10.42.112.11"
             ]
          },
-         "stack-b_service-bar_1.rancher.internal.":{
+         "stack-b_service-bar_1.default.discover.internal.":{
             "answer":[
                "10.42.112.11"
             ]
          },
-         "rancher-metadata.rancher.internal.":{
+         "rancher-metadata.discover.internal.":{
             "answer":[
                "169.254.169.250"
             ]
          },
-         "ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd.ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.rancher.internal.":{
+         "ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd.ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.discover.internal.":{
             "answer":[
                "169.254.169.250"
             ]
          }
       },
       "cname":{
-         "external-alias-foo.stack-a.rancher.internal.":{
+         "external-alias-foo.stack-a.default.discover.internal.":{
             "answer":"www.example.com."
          },
-         "external-alias-bar.stack-b.rancher.internal.":{
+         "external-alias-bar.stack-b.default.discover.internal.":{
             "answer":"www.example.com."
          },
       }
    },
    "127.0.0.1":{
       "search":[
-         "stack-a.rancher.internal",
-         "service-foo.stack-a.rancher.internal",
-         "rancher.internal"
+         "stack-a.default.discover.internal",
+         "service-foo.stack-a.default.discover.internal",
+         "default.discover.internal"
       ],
       "recurse":[
 

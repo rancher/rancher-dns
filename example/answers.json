@@ -1,7 +1,7 @@
 {
   "default": {
     "recurse": ["8.8.4.4","8.8.8.8:53"],
-    "authoritative": ["something.else.","rancher.internal"],
+    "authoritative": ["something.else.","discover.internal"],
 
     "a": {
       "app.": {"answer": ["10.1.2.3"]},
@@ -10,12 +10,12 @@
 
       "chain4.": {"answer": ["1.2.3.4","2.3.4.5"]},
 
-      "a.rancher.internal.": {"answer": ["1.2.3.4"]},
-      "b.rancher.internal.": {"answer": ["1.2.3.5"]},
-      "c.x.rancher.internal.": {"answer": ["1.2.3.6"]},
-      "c.y.rancher.internal.": {"answer": ["1.2.3.7"]},
-      "d.x.rancher.internal.": {"answer": ["1.2.3.8"]},
-      "d.y.rancher.internal.": {"answer": ["1.2.3.9"]}
+      "a.discover.internal.": {"answer": ["1.2.3.4"]},
+      "b.discover.internal.": {"answer": ["1.2.3.5"]},
+      "c.x.discover.internal.": {"answer": ["1.2.3.6"]},
+      "c.y.discover.internal.": {"answer": ["1.2.3.7"]},
+      "d.x.discover.internal.": {"answer": ["1.2.3.8"]},
+      "d.y.discover.internal.": {"answer": ["1.2.3.9"]}
     },
 
     "cname": {
@@ -52,14 +52,14 @@
 
       "extcname.": {"answer": "cdn.rancher.io."},
 
-      "e.x.rancher.internal.": {"answer": "d.x.rancher.internal."},
-      "e.y.rancher.internal.": {"answer": "d.y.rancher.internal."}
+      "e.x.discover.internal.": {"answer": "d.x.discover.internal."},
+      "e.y.discover.internal.": {"answer": "d.y.discover.internal."}
     },
 
     "ptr": {
-      "2.3.4.5": {"answer": "ptr.rancher.internal."},
-      "5.3.4.2": {"answer": "ptr2.rancher.internal."},
-      "6.2.4.3.in-addr.arpa.": {"answer": "ptr3.rancher.internal."}
+      "2.3.4.5": {"answer": "ptr.discover.internal."},
+      "5.3.4.2": {"answer": "ptr2.discover.internal."},
+      "6.2.4.3.in-addr.arpa.": {"answer": "ptr3.discover.internal."}
     },
 
     "txt": {
@@ -76,7 +76,7 @@
 
   "127.0.0.1": {
     "recurse": ["8.8.4.4"],
-    "search": ["x.rancher.internal","rancher.internal"],
+    "search": ["x.discover.internal","discover.internal"],
 
     "a": {
       "mysql.": {"answer": ["127.0.0.3"]},
@@ -88,11 +88,11 @@
       "stuff.": {"answer": "web."},
       "external.": {"answer": "apple.com."},
 
-      "d.x.rancher.internal.": {"answer": "d.y.rancher.internal."},
-      "g.x.rancher.internal.": {"answer": "d.x."},
+      "d.x.discover.internal.": {"answer": "d.y.discover.internal."},
+      "g.x.discover.internal.": {"answer": "d.x."},
 
-      "parent.x.rancher.internal.": {"answer": "child.x."},
-      "child.x.rancher.internal.": {"answer": "chain."}
+      "parent.x.discover.internal.": {"answer": "child.x."},
+      "child.x.discover.internal.": {"answer": "chain."}
     }
   },
 

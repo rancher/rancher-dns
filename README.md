@@ -38,9 +38,9 @@ Option      | Default               | Description
     // Search suffixes to try to find a match inside the answers file.
     // For queries consisting of a single label, e.g. "mysql.", rancher-dns will
     // try appending these suffixes one a a time and looking for an answer
-    // ("mysql.", "mysql.x.rancher.internal", and "mysql.rancher.internal")
+    // ("mysql.", "mysql.x.discover.internal", and "mysql.discover.internal")
     // before moving on to the "default" key or recursive lookup.
-    "search": ["x.rancher.internal","rancher.internal"],
+    "search": ["x.discover.internal","discover.internal"],
 
     // A records
     "a": {
@@ -63,8 +63,8 @@ Option      | Default               | Description
       // or
       // FQDN (with backwards octets) => { answer: a single FQDN, ttl: TTL for this specific answer }
       // Note: Key must be fully-qualified (ending in dot) and all lowercase
-      "10.42.1.2": {"answer": "mycontainer.rancher.internal."},
-      "3.1.42.10.in-addr.apra.": {"answer": "anothercontainer.rancher.internal."},
+      "10.42.1.2": {"answer": "mycontainer.discover.internal."},
+      "3.1.42.10.in-addr.apra.": {"answer": "anothercontainer.discover.internal."},
     },
 
     // TXT records

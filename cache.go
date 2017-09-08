@@ -7,14 +7,14 @@ import (
 	"github.com/rancher/rancher-dns/cache"
 )
 
-func getClientCache(clientIp string) *cache.Cache {
+func getClientCache(clientUUID string) *cache.Cache {
 	clientSpecificCachesMutex.RLock()
-	clientCache, ok := clientSpecificCaches[clientIp]
+	clientCache, ok := clientSpecificCaches[clientUUID]
 	clientSpecificCachesMutex.RUnlock()
 	if !ok {
 		clientCache = cache.New(int(*cacheCapacity), int(*defaultTtl))
 		clientSpecificCachesMutex.Lock()
-		clientSpecificCaches[clientIp] = clientCache
+		clientSpecificCaches[clientUUID] = clientCache
 		clientSpecificCachesMutex.Unlock()
 	}
 	return clientCache
@@ -24,16 +24,16 @@ func globalCacheHit(req *dns.Msg) (*dns.Msg, time.Time) {
 	return globalCache.Hit(req.Question[0], false, false, req.MsgHdr.Id)
 }
 
-func clientSpecificCacheHit(clientIp string, req *dns.Msg) (*dns.Msg, time.Time) {
-	return getClientCache(clientIp).Hit(req.Question[0], false, false, req.MsgHdr.Id)
+func clientSpecificCacheHit(clientUUID string, req *dns.Msg) (*dns.Msg, time.Time) {
+	return getClientCache(clientUUID).Hit(req.Question[0], false, false, req.MsgHdr.Id)
 }
 
-func addToCache(req, msg *dns.Msg, clientIp ...string) {
+func addToCache(req, msg *dns.Msg, clientUUID ...string) {
 	var currCache *cache.Cache
-	if len(clientIp) == 0 {
+	if len(clientUUID) == 0 {
 		currCache = globalCache
 	} else {
-		currCache = getClientCache(clientIp[0])
+		currCache = getClientCache(clientUUID[0])
 	}
 	ttl := currCache.GetTTL()
 	if len(msg.Answer) > 0 {
@@ -50,8 +50,8 @@ func addToGlobalCache(req, msg *dns.Msg) {
 	addToCache(req, msg)
 }
 
-func addToClientSpecificCache(clientIp string, req, msg *dns.Msg) {
-	addToCache(req, msg, clientIp)
+func addToClientSpecificCache(clientUUID string, req, msg *dns.Msg) {
+	addToCache(req, msg, clientUUID)
 }
 
 func clearClientSpecificCaches() {
