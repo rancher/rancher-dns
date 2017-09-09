@@ -15,11 +15,14 @@ var (
 )
 
 type MetadataFetcher interface {
-	GetService(svcName string, stackName string) (*metadata.Service, error)
+	GetService(link string) (*metadata.Service, error)
 	GetServices() ([]metadata.Service, error)
 	GetContainers() ([]metadata.Container, error)
 	OnChange(intervalSeconds int, do func(string))
 	GetSelfHost() (metadata.Host, error)
+	GetServiceByRegionEnvironment(regionName string, envName string, stackName string, svcName string) (metadata.Service, error)
+	GetServiceByEnvironment(envName string, stackName string, svcName string) (metadata.Service, error)
+	GetServiceByName(stackName string, svcName string) (metadata.Service, error)
 }
 
 type rMetaFetcher struct {
@@ -450,8 +453,7 @@ func (c *ConfigGenerator) getExternalServiceEndpoints(svc *metadata.Service) []*
 func (c *ConfigGenerator) getAliasServiceEndpoints(svc *metadata.Service, uuidToPrimaryIp map[string]string) ([]*Record, error) {
 	var recs []*Record
 	for link := range svc.Links {
-		svcName := strings.SplitN(link, "/", 2)
-		service, err := c.metaFetcher.GetService(svcName[1], svcName[0])
+		service, err := c.metaFetcher.GetService(link)
 		if err != nil {
 			return nil, err
 		}
@@ -474,19 +476,35 @@ type Record struct {
 	Container *metadata.Container
 }
 
-func (mf rMetaFetcher) GetService(svcName string, stackName string) (*metadata.Service, error) {
-	svcs, err := mf.metadataClient.GetServices()
+func (mf rMetaFetcher) GetService(link string) (*metadata.Service, error) {
+	splitSvcName := strings.Split(link, "/")
+	var svc metadata.Service
+	var err error
+	if len(splitSvcName) == 4 {
+		// svcName := strings.Split(splitSvcName, ":")
+		svc, err = mf.metadataClient.GetServiceByRegionEnvironment(splitSvcName[0], splitSvcName[1], splitSvcName[2], splitSvcName[3])
+	} else if len(splitSvcName) == 3 {
+		// svcName := strings.Split(splitSvcName, ":")
+		svc, err = mf.metadataClient.GetServiceByEnvironment(splitSvcName[0], splitSvcName[1], splitSvcName[2])
+	} else {
+		svc, err = mf.metadataClient.GetServiceByName(splitSvcName[0], splitSvcName[1])
+	}
 	if err != nil {
 		return nil, err
 	}
-	var service metadata.Service
-	for _, svc := range svcs {
-		if strings.EqualFold(svc.Name, svcName) && strings.EqualFold(svc.StackName, stackName) {
-			service = svc
-			break
-		}
-	}
-	return &service, nil
+	return &svc, nil
+}
+
+func (mf rMetaFetcher) GetServiceByRegionEnvironment(regionName string, envName string, stackName string, svcName string) (metadata.Service, error) {
+	return mf.metadataClient.GetServiceByRegionEnvironment(regionName, envName, stackName, svcName)
+}
+
+func (mf rMetaFetcher) GetServiceByEnvironment(envName string, stackName string, svcName string) (metadata.Service, error) {
+	return mf.metadataClient.GetServiceByEnvironment(envName, stackName, svcName)
+}
+
+func (mf rMetaFetcher) GetServiceByName(stackName string, svcName string) (metadata.Service, error) {
+	return mf.metadataClient.GetServiceByName(stackName, svcName)
 }
 
 func (mf rMetaFetcher) GetServices() ([]metadata.Service, error) {
