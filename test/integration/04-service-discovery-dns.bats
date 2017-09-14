@@ -4,14 +4,14 @@ load test_helper
 
 @test "Returns NXDOMAIN for query referencing non-existing service" {
   skip "Needs to be fixed"
-  run resolve no-service.no-stack.rancher.internal A
+  run resolve no-service.no-stack.default.discover.internal A
   log $output
   [ $status -eq 0 ]
   [[ "$output" =~ "status: NXDOMAIN" ]] || false
 }
 
 @test "Returns NODATA for AAAA query referencing existing service" {
-  run resolve service-foo.stack-a.rancher.internal AAAA
+  run resolve service-foo.stack-a.default.discover.internal AAAA
   log $output
   [ $status -eq 0 ]
   [[ "$output" =~ "status: NOERROR" ]] || false
@@ -28,8 +28,8 @@ load test_helper
 
 # Services
 
-@test "Query for service is resolved (<service>.<stack>.rancher.internal)" {
-  run resolve service-bar.stack-b.rancher.internal A
+@test "Query for service is resolved (<service>.<stack>.<environment>.discover.internal)" {
+  run resolve service-bar.stack-b.default.discover.internal A
   log $output
   [ $status -eq 0 ]
   [[ "$output" =~ "status: NOERROR" ]] || false
@@ -58,8 +58,8 @@ load test_helper
 
 # Containers
 
-@test "Query for container is resolved (<container>.rancher.internal)" {
-  run resolve stack-a_service-baz_1.rancher.internal A
+@test "Query for container is resolved (<container>.<environment>.discover.internal)" {
+  run resolve stack-a_service-baz_1.default.discover.internal A
   log $output
   [ $status -eq 0 ]
   [[ "$output" =~ "status: NOERROR" ]] || false
@@ -78,8 +78,8 @@ load test_helper
 
 # Sidekicks
 
-@test "Query for sidekick is resolved (<sidekick>.<service>.<stack>.rancher.internal)" {
-  run resolve sidekick-bar.service-foo.stack-a.rancher.internal A
+@test "Query for sidekick is resolved (<sidekick>.<service>.<stack>.<environment>.discover.internal)" {
+  run resolve sidekick-bar.service-foo.stack-a.default.discover.internal A
   log $output
   [ $status -eq 0 ]
   [[ "$output" =~ "status: NOERROR" ]] || false
@@ -106,7 +106,7 @@ load test_helper
 }
 
 @test "Query for sidekick in other stack is resolved (<sidekick>.<service>.<stack>)" {
-  run resolve sidekick-baz.service-bar.stack-b A
+  run resolve sidekick-baz.service-bar.stack-b.default A
   log $output
   [ $status -eq 0 ]
   [[ "$output" =~ "status: NOERROR" ]] || false
@@ -116,8 +116,8 @@ load test_helper
 
 # External Alias
 
-@test "Query for external alias is resolved (<external-alias>.<stack>.rancher.internal)" {
-  run resolve external-alias-foo.stack-a.rancher.internal A
+@test "Query for external alias is resolved (<external-alias>.<stack>.<environment>.discover.internal)" {
+  run resolve external-alias-foo.stack-a.default.discover.internal A
   log $output
   [ $status -eq 0 ]
   [[ "$output" =~ "status: NOERROR" ]] || false
@@ -133,7 +133,7 @@ load test_helper
 }
 
 @test "Query for external alias in other stack is resolved (<external-alias>.<stack>)" {
-  run resolve external-alias-bar.stack-b A
+  run resolve external-alias-bar.stack-b.default A
   log $output
   [ $status -eq 0 ]
   [[ "$output" =~ "status: NOERROR" ]] || false

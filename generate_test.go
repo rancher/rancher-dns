@@ -2,9 +2,10 @@ package main
 
 import (
 	//"github.com/Sirupsen/logrus"
-	"github.com/rancher/go-rancher-metadata/metadata"
 	"strings"
 	"testing"
+
+	"github.com/rancher/go-rancher-metadata/metadata"
 )
 
 var c *ConfigGenerator
@@ -24,7 +25,7 @@ func TestVIP(t *testing.T) {
 		t.Fatalf("Error generating answers %v", err)
 	}
 
-	a := getRecordAFromDefault(answers, "vipsvc.foo.rancher.internal.")
+	a := getRecordAFromDefault(answers, "vipsvc.foo.default.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of answers for vip [%v]", a.Answer)
 	}
@@ -39,7 +40,7 @@ func TestRegular(t *testing.T) {
 		t.Fatalf("Error generating answers %v", err)
 	}
 
-	a := getRecordAFromDefault(answers, "regularsvc.foo.rancher.internal.")
+	a := getRecordAFromDefault(answers, "regularsvc.foo.default.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of answers for regular service [%v]", a.Answer)
 	}
@@ -54,7 +55,7 @@ func TestStoppedContainer(t *testing.T) {
 		t.Fatalf("Error generating answers %v", err)
 	}
 
-	a := getRecordAFromDefault(answers, "stoppedsvc.foo.rancher.internal.")
+	a := getRecordAFromDefault(answers, "stoppedsvc.foo.default.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of answers for service with only one stopped container [%v]", a.Answer)
 	}
@@ -66,7 +67,7 @@ func TestOneStoppedContainer(t *testing.T) {
 		t.Fatalf("Error generating answers %v", err)
 	}
 
-	a := getRecordAFromDefault(answers, "stoppedonesvc.foo.rancher.internal.")
+	a := getRecordAFromDefault(answers, "stoppedonesvc.foo.default.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of answers for service with 2 containers, 1 stopped [%v]", a.Answer)
 	}
@@ -78,7 +79,7 @@ func TestOneUnhealthyContainer(t *testing.T) {
 		t.Fatalf("Error generating answers %v", err)
 	}
 
-	a := getRecordAFromDefault(answers, "unhealthysvc.foo.rancher.internal.")
+	a := getRecordAFromDefault(answers, "unhealthysvc.foo.default.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of answers for service with 2 containers, 1 stopped [%v]", a.Answer)
 	}
@@ -94,7 +95,7 @@ func TestNoHealthStateWithHealthcheck(t *testing.T) {
 		t.Fatalf("Error generating answers %v", err)
 	}
 
-	a := getRecordAFromDefault(answers, "healthempty.foo.rancher.internal.")
+	a := getRecordAFromDefault(answers, "healthempty.foo.default.discover.internal.")
 
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of answers for service with health check empty, expected count 1: [%v]", a.Answer)
@@ -111,12 +112,12 @@ func TestExternalgService(t *testing.T) {
 		t.Fatalf("Error generating answers %v", err)
 	}
 
-	a := getRecordAFromDefault(answers, "externalCnameSvc.foo.rancher.internal.")
+	a := getRecordAFromDefault(answers, "externalCnameSvc.foo.default.discover.internal.")
 	if len(a.Answer) != 0 {
 		t.Fatalf("Incorrect number of A records, should be 0: [%v]", len(a.Answer))
 	}
 
-	c := getRecordCnameFromDefault(answers, "externalCnameSvc.foo.rancher.internal.")
+	c := getRecordCnameFromDefault(answers, "externalCnameSvc.foo.default.discover.internal.")
 
 	if c.Answer != "google.com." {
 		t.Fatalf("Incorrect answer for cname [%v]", c.Answer)
@@ -129,7 +130,7 @@ func TestExternalIpsService(t *testing.T) {
 		t.Fatalf("Error generating answers %v", err)
 	}
 
-	a := getRecordAFromDefault(answers, "externalIpsSvc.foo.rancher.internal.")
+	a := getRecordAFromDefault(answers, "externalIpsSvc.foo.default.discover.internal.")
 	if len(a.Answer) != 2 {
 		t.Fatalf("Incorrect number of A records, should be 2: [%v]", len(a.Answer))
 	}
@@ -141,7 +142,7 @@ func TestAliasService(t *testing.T) {
 		t.Fatalf("Error generating answers %v", err)
 	}
 
-	a := getRecordAFromDefault(answers, "aliasSvc.foo.rancher.internal.")
+	a := getRecordAFromDefault(answers, "aliasSvc.foo.default.discover.internal.")
 	if len(a.Answer) != 2 {
 		t.Fatalf("Incorrect number of A records, should be 2: [%v]", len(a.Answer))
 	}
@@ -160,7 +161,7 @@ func TestClientNoLinks(t *testing.T) {
 	if len(c.A) != 0 {
 		t.Fatalf("Incorrect number of A records: [%v]", len(c.A))
 	}
-	a := getRecordAFromDefault(answers, "clientIp1.rancher.internal.")
+	a := getRecordAFromDefault(answers, "clientIp1.default.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of A records, should be 1: [%v]", len(a.Answer))
 	}
@@ -179,7 +180,7 @@ func TestClientStandalone(t *testing.T) {
 	if len(c.A) != 0 {
 		t.Fatalf("Incorrect number of A records: [%v]", len(c.A))
 	}
-	a := getRecordAFromDefault(answers, "clientStandalone.rancher.internal.")
+	a := getRecordAFromDefault(answers, "clientStandalone.default.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of A records, should be 1: [%v]", len(a.Answer))
 	}
@@ -190,7 +191,7 @@ func TestClientKubernetes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error generating answers %v", err)
 	}
-	ip := "172.17.0.11"
+	ip := "clientKubernetes016d5f89-f44b"
 	c := getClientAnswers(answers, ip)
 	if c == nil {
 		t.Fatalf("Can't find client answers for: [%v]", ip)
@@ -198,7 +199,7 @@ func TestClientKubernetes(t *testing.T) {
 	if len(c.A) != 0 {
 		t.Fatalf("Incorrect number of A records: [%v]", len(c.A))
 	}
-	a := getRecordAFromDefault(answers, "clientKubernetes.foo.svc.cluster.local.")
+	a := getRecordAFromDefault(answers, "clientKubernetes.foo.default.svc.cluster.local.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of A records, should be 1: [%v]", len(a.Answer))
 	}
@@ -215,17 +216,17 @@ func TestVipClientKubernetes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error generating answers %v", err)
 	}
-	ip := "172.17.0.12"
-	c := getClientAnswers(answers, ip)
+	uuid := "clientKubernetesVip016d5f89-f44b"
+	c := getClientAnswers(answers, uuid)
 	if c == nil {
-		t.Fatalf("Can't find client answers for: [%v]", ip)
+		t.Fatalf("Can't find client answers for: [%v]", uuid)
 	}
 	if len(c.A) != 0 {
 		t.Fatalf("Incorrect number of A records: [%v]", len(c.A))
 	}
 
 	//container name is clientKubernetesVip too
-	a := getRecordAFromDefault(answers, "clientKubernetesVip.foo.svc.cluster.local.")
+	a := getRecordAFromDefault(answers, "clientKubernetesVip.foo.default.svc.cluster.local.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of A records, should be 1: [%v]", len(a.Answer))
 	}
@@ -241,7 +242,7 @@ func TestRancherMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error generating answers %v", err)
 	}
-	a := getRecordAFromDefault(answers, "rancher-metadata.rancher.internal.")
+	a := getRecordAFromDefault(answers, "rancher-metadata.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of A records, should be 1: [%v]", len(a.Answer))
 	}
@@ -257,7 +258,7 @@ func TestClientWithLinksNoAlias(t *testing.T) {
 		t.Fatalf("Error generating answers %v", err)
 	}
 
-	ips := []string{"172.17.0.3", "172.17.0.4"}
+	ips := []string{"client_container1016d5f89-f44b", "client_container2016d5f89-f44b"}
 	for _, ip := range ips {
 		c := getClientAnswers(answers, ip)
 		if c == nil {
@@ -283,20 +284,20 @@ func TestNetworkFrom(t *testing.T) {
 	if len(c.A) != 0 {
 		t.Fatalf("Incorrect number of A records: [%v]", len(c.A))
 	}
-	a := getRecordAFromDefault(answers, "networkFromMaster.rancher.internal.")
+	a := getRecordAFromDefault(answers, "networkFromMaster.default.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of A records, should be 1: [%v]", len(a.Answer))
 	}
 	if a.Answer[0] != "192.168.0.34" {
-		t.Fatalf("Incorrect ip for master, should be: [%v]", ip)
+		t.Fatal("Incorrect ip for master, should be: [192.168.0.34]")
 	}
 
-	a = getRecordAFromDefault(answers, "networkFromChild.rancher.internal.")
+	a = getRecordAFromDefault(answers, "networkFromChild.default.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of A records, should be 1: [%v]", len(a.Answer))
 	}
 	if a.Answer[0] != "192.168.0.34" {
-		t.Fatalf("Incorrect ip for child, should be: [%v], actual value is [%v]", ip, a.Answer[0])
+		t.Fatalf("Incorrect ip for child, should be: [192.168.0.34], actual value is [%v]", a.Answer[0])
 	}
 }
 
@@ -312,11 +313,11 @@ func TestClientWithLinksAlias(t *testing.T) {
 		if c == nil {
 			t.Fatalf("Can't find client answers for: [%v]", ip)
 		}
-		if len(c.A) != 2 {
+		if len(c.A) != 1 {
 			t.Fatalf("Incorrect number of A records, should be 2: [%v]", len(c.A))
 		}
 
-		fqdns := []string{"myalias.foo.rancher.internal.", "myalias.rancher.internal."}
+		fqdns := []string{"myalias."}
 		for _, fqdn := range fqdns {
 			val, ok := c.A[fqdn]
 			if !ok {
@@ -346,7 +347,7 @@ func TestContainerLink(t *testing.T) {
 	if len(c.A) != 1 {
 		t.Fatalf("Incorrect number of A records, should be 1: [%v]", len(c.A))
 	}
-	fqdn := "containerLink.rancher.internal."
+	fqdn := "containerLink."
 	for key, val := range c.A {
 		ok := strings.EqualFold(fqdn, key)
 		if !ok {
@@ -374,11 +375,11 @@ func TestClientWithAliasCnameLinks(t *testing.T) {
 			t.Fatalf("Can't find client answers for: [%v]", ip)
 		}
 
-		fqdns := []string{"myaliascname.foo.rancher.internal.", "myaliascname.rancher.internal."}
+		fqdns := []string{"myaliascname."}
 		for _, fqdn := range fqdns {
 			val, ok := c.Cname[fqdn]
 			if !ok {
-				t.Fatalf("Can't find the fqnd cname link %s", fqdn)
+				t.Fatalf("Can't find the fqnd cname link %s for client %s", fqdn, ip)
 			}
 
 			if val.Answer != "google.com." {
@@ -394,7 +395,7 @@ func TestSidekicks(t *testing.T) {
 		t.Fatalf("Error generating answers %v", err)
 	}
 
-	a := getRecordAFromDefault(answers, "primary.foo.rancher.internal.")
+	a := getRecordAFromDefault(answers, "primary.foo.default.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of answers for primary service [%v]", a.Answer)
 	}
@@ -402,7 +403,7 @@ func TestSidekicks(t *testing.T) {
 		t.Fatalf("Incorrect answer for primary service ip [%v]", a.Answer[0])
 	}
 
-	a = getRecordAFromDefault(answers, "sidekick.primary.foo.rancher.internal.")
+	a = getRecordAFromDefault(answers, "sidekick.primary.foo.default.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of answers for sidekick service [%v]", a.Answer)
 	}
@@ -417,7 +418,7 @@ func TestNSidekicks(t *testing.T) {
 		t.Fatalf("Error generating answers %v", err)
 	}
 
-	a := getRecordAFromDefault(answers, "primaryn.foo.rancher.internal.")
+	a := getRecordAFromDefault(answers, "primaryn.foo.default.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of answers for primary service [%v]", a.Answer)
 	}
@@ -425,7 +426,7 @@ func TestNSidekicks(t *testing.T) {
 		t.Fatalf("Incorrect answer for primary service ip [%v]", a.Answer[0])
 	}
 
-	a = getRecordAFromDefault(answers, "primaryn.rancher.internal.")
+	a = getRecordAFromDefault(answers, "primaryn.default.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of answers for primary service container [%v]", a.Answer)
 	}
@@ -433,7 +434,7 @@ func TestNSidekicks(t *testing.T) {
 		t.Fatalf("Incorrect answer for primary service ip [%v]", a.Answer[0])
 	}
 
-	a = getRecordAFromDefault(answers, "sidekickn.primaryn.foo.rancher.internal.")
+	a = getRecordAFromDefault(answers, "sidekickn.primaryn.foo.default.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of answers for sidekick service [%v]", a.Answer)
 	}
@@ -441,7 +442,7 @@ func TestNSidekicks(t *testing.T) {
 		t.Fatalf("Incorrect answer for sidekick service [%v]", a.Answer[0])
 	}
 
-	a = getRecordAFromDefault(answers, "sidekickn.rancher.internal.")
+	a = getRecordAFromDefault(answers, "sidekickn.default.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of answers for sidekick service container [%v]", a.Answer)
 	}
@@ -501,26 +502,33 @@ func getRecordCnameFromDefault(answers Answers, fqdn string) RecordCname {
 func (mf tMetaFetcher) GetService(svcName string, stackName string) (*metadata.Service, error) {
 	if svcName == "regularSvc" && stackName == "foo" {
 		c1 := metadata.Container{
-			Name:        "regular_container",
-			UUID:        "regular_container",
-			StackName:   "foo",
-			ServiceName: "regularSvc",
-			PrimaryIp:   "192.168.1.1",
-			State:       "running",
+			Name:            "regular_container1",
+			UUID:            "regular_container1016d5f89-f44b",
+			StackName:       "foo",
+			ServiceName:     "regularSvc",
+			ServiceUUID:     "regularSvc",
+			PrimaryIp:       "192.168.1.1",
+			State:           "running",
+			EnvironmentName: "Default",
 		}
 		c2 := metadata.Container{
-			Name:        "regular_container",
-			StackName:   "foo",
-			ServiceName: "regularSvc",
-			PrimaryIp:   "192.168.1.2",
-			State:       "running",
+			Name:            "regular_container2",
+			UUID:            "regular_container2016d5f89-f44b",
+			StackName:       "foo",
+			ServiceName:     "regularSvc",
+			ServiceUUID:     "regularSvc",
+			PrimaryIp:       "192.168.1.2",
+			State:           "running",
+			EnvironmentName: "Default",
 		}
 		containers := []metadata.Container{c1, c2}
 		return &metadata.Service{
-			Name:       "regularSvc",
-			Kind:       "service",
-			StackName:  "foo",
-			Containers: containers,
+			Name:            "regularSvc",
+			UUID:            "regularSvc",
+			Kind:            "service",
+			StackName:       "foo",
+			Containers:      containers,
+			EnvironmentName: "Default",
 		}, nil
 	}
 	return nil, nil
@@ -531,346 +539,451 @@ func (mf tMetaFetcher) GetServices() ([]metadata.Service, error) {
 
 	var containers []metadata.Container
 	c := metadata.Container{
-		Name:        "clientip1",
-		StackName:   "foo",
-		ServiceName: "clientip1Svc",
-		PrimaryIp:   "172.17.0.2",
-		State:       "running",
-		DnsSearch:   []string{"regularSvc.rancher.internal", "foo.rancher.internal", "rancher.internal"},
+		Name:            "clientip1",
+		UUID:            "clientIp1016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "clientip1Svc",
+		ServiceUUID:     "clientip1Svc",
+		PrimaryIp:       "172.17.0.2",
+		State:           "running",
+		EnvironmentName: "Default",
+		DnsSearch:       []string{"regularSvc.discover.internal", "foo.discover.internal", "discover.internal"},
 	}
 	containers = []metadata.Container{c}
 	clientip1Svc := metadata.Service{
-		Name:       "clientip1Svc",
-		Kind:       "service",
-		StackName:  "foo",
-		Containers: containers,
+		Name:            "clientip1Svc",
+		UUID:            "clientip1Svc",
+		Kind:            "service",
+		StackName:       "foo",
+		Containers:      containers,
+		EnvironmentName: "Default",
 	}
 	c = metadata.Container{
-		Name:        "vip_container",
-		StackName:   "foo",
-		ServiceName: "vipSvc",
-		PrimaryIp:   "192.168.1.1",
-		State:       "running",
+		Name:            "vip_container",
+		UUID:            "vip_container016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "vipSvc",
+		ServiceUUID:     "vipSvc",
+		PrimaryIp:       "192.168.1.1",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 	containers = []metadata.Container{c}
 	vip := metadata.Service{
-		Name:       "vipSvc",
-		Vip:        "10.1.1.1",
-		Kind:       "service",
-		StackName:  "foo",
-		Containers: containers,
+		Name:            "vipSvc",
+		UUID:            "vipSvc",
+		Vip:             "10.1.1.1",
+		Kind:            "service",
+		StackName:       "foo",
+		Containers:      containers,
+		EnvironmentName: "Default",
 	}
 
 	c = metadata.Container{
-		Name:        "regular_container",
-		UUID:        "regular_container",
-		StackName:   "foo",
-		ServiceName: "regularSvc",
-		PrimaryIp:   "192.168.1.1",
-		State:       "running",
+		Name:            "regular_container",
+		UUID:            "regular_container016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "regularSvc",
+		ServiceUUID:     "regularSvc",
+		PrimaryIp:       "192.168.1.1",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 	containers = []metadata.Container{c}
 	regular := metadata.Service{
-		Name:       "regularSvc",
-		Kind:       "service",
-		StackName:  "foo",
-		Containers: containers,
+		Name:            "regularSvc",
+		UUID:            "regularSvc",
+		Kind:            "service",
+		StackName:       "foo",
+		Containers:      containers,
+		EnvironmentName: "Default",
 	}
 
 	c = metadata.Container{
-		Name:        "regular_container",
-		StackName:   "foo",
-		ServiceName: "regularSvc",
-		PrimaryIp:   "192.168.1.1",
-		State:       "stopped",
+		Name:            "regular_container",
+		UUID:            "regular_container016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "regularSvc",
+		ServiceUUID:     "regularSvc",
+		PrimaryIp:       "192.168.1.1",
+		State:           "stopped",
+		EnvironmentName: "Default",
 	}
 	containers = []metadata.Container{c}
 	stopped := metadata.Service{
-		Name:       "stoppedSvc",
-		Kind:       "service",
-		StackName:  "foo",
-		Containers: containers,
+		Name:            "stoppedSvc",
+		UUID:            "stoppedSvc",
+		Kind:            "service",
+		StackName:       "foo",
+		Containers:      containers,
+		EnvironmentName: "Default",
 	}
 	c1 := metadata.Container{
-		Name:        "c_stopped",
-		StackName:   "foo",
-		ServiceName: "stoppedoneSvc",
-		PrimaryIp:   "192.168.1.1",
-		State:       "stopped",
+		Name:            "c_stopped",
+		UUID:            "c_stopped016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "stoppedoneSvc",
+		ServiceUUID:     "stoppedoneSvc",
+		PrimaryIp:       "192.168.1.1",
+		State:           "stopped",
+		EnvironmentName: "Default",
 	}
 	c2 := metadata.Container{
-		Name:        "c_running",
-		StackName:   "foo",
-		ServiceName: "stoppedoneSvc",
-		PrimaryIp:   "192.168.1.2",
-		State:       "running",
+		Name:            "c_running",
+		UUID:            "c_running016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "stoppedoneSvc",
+		ServiceUUID:     "stoppedoneSvc",
+		PrimaryIp:       "192.168.1.2",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 	containers = []metadata.Container{c1, c2}
 	stoppedone := metadata.Service{
-		Name:       "stoppedoneSvc",
-		Kind:       "service",
-		StackName:  "foo",
-		Containers: containers,
+		Name:            "stoppedoneSvc",
+		UUID:            "stoppedoneSvc",
+		Kind:            "service",
+		StackName:       "foo",
+		Containers:      containers,
+		EnvironmentName: "Default",
 	}
 
 	c1 = metadata.Container{
-		Name:        "c_stopped",
-		StackName:   "foo",
-		ServiceName: "stoppedoneSvc",
-		PrimaryIp:   "192.168.1.1",
-		State:       "running",
-		HealthState: "unheatlhy",
+		Name:            "c_stopped",
+		UUID:            "c_stopped016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "stoppedoneSvc",
+		ServiceUUID:     "stoppedoneSvc",
+		PrimaryIp:       "192.168.1.1",
+		State:           "running",
+		HealthState:     "unheatlhy",
+		EnvironmentName: "Default",
 	}
 	c2 = metadata.Container{
-		Name:        "c_running",
-		StackName:   "foo",
-		ServiceName: "stoppedoneSvc",
-		PrimaryIp:   "192.168.0.3",
-		State:       "running",
-		HealthState: "healthy",
+		Name:            "c_running",
+		UUID:            "c_running016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "stoppedoneSvc",
+		ServiceUUID:     "stoppedoneSvc",
+		PrimaryIp:       "192.168.0.3",
+		State:           "running",
+		HealthState:     "healthy",
+		EnvironmentName: "Default",
 	}
 	containers = []metadata.Container{c1, c2}
 	unhealthy := metadata.Service{
-		Name:       "unhealthySvc",
-		Kind:       "service",
-		StackName:  "foo",
-		Containers: containers,
+		Name:            "unhealthySvc",
+		UUID:            "unhealthySvc",
+		Kind:            "service",
+		StackName:       "foo",
+		Containers:      containers,
+		EnvironmentName: "Default",
 	}
 	externalCname := metadata.Service{
-		Name:      "externalCnameSvc",
-		Kind:      "externalService",
-		StackName: "foo",
-		Hostname:  "google.com",
+		Name:            "externalCnameSvc",
+		UUID:            "externalCnameSvc",
+		Kind:            "externalService",
+		StackName:       "foo",
+		Hostname:        "google.com",
+		EnvironmentName: "Default",
 	}
 
 	externalIPs := metadata.Service{
-		Name:        "externalIpsSvc",
-		Kind:        "externalService",
-		StackName:   "foo",
-		ExternalIps: []string{"10.1.1.1", "10.1.1.2"},
+		Name:            "externalIpsSvc",
+		UUID:            "externalIpsSvc",
+		Kind:            "externalService",
+		StackName:       "foo",
+		ExternalIps:     []string{"10.1.1.1", "10.1.1.2"},
+		EnvironmentName: "Default",
 	}
 
 	links := make(map[string]string)
 	links["foo/regularSvc"] = "foo/regularSvc"
 	alias := metadata.Service{
-		Name:      "aliasSvc",
-		Kind:      "dnsService",
-		StackName: "foo",
-		Links:     links,
+		Name:            "aliasSvc",
+		UUID:            "aliasSvc",
+		Kind:            "dnsService",
+		StackName:       "foo",
+		Links:           links,
+		EnvironmentName: "Default",
 	}
 
 	c = metadata.Container{
-		Name:        "client_container",
-		StackName:   "foo",
-		ServiceName: "vipSvc",
-		PrimaryIp:   "172.17.0.2",
-		State:       "running",
+		Name:            "client_container",
+		UUID:            "client_container016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "vipSvc",
+		ServiceUUID:     "vipSvc",
+		PrimaryIp:       "172.17.0.2",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 	containers = []metadata.Container{c}
 	client := metadata.Service{
-		Name:       "clientSvc",
-		Kind:       "service",
-		StackName:  "foo",
-		Containers: containers,
+		Name:            "clientSvc",
+		UUID:            "clientSvc",
+		Kind:            "service",
+		StackName:       "foo",
+		Containers:      containers,
+		EnvironmentName: "Default",
 	}
 
 	links = make(map[string]string)
 	links["foo/regularSvc"] = "foo/regularSvc"
 	c1 = metadata.Container{
-		Name:        "client_container",
-		StackName:   "foo",
-		ServiceName: "vipSvc",
-		PrimaryIp:   "172.17.0.3",
-		State:       "running",
+		Name:            "client_container1",
+		UUID:            "client_container1016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "vipSvc",
+		ServiceUUID:     "vipSvc",
+		PrimaryIp:       "172.17.0.3",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 	c2 = metadata.Container{
-		Name:        "client_container",
-		StackName:   "foo",
-		ServiceName: "vipSvc",
-		PrimaryIp:   "172.17.0.4",
-		State:       "running",
+		Name:            "client_container2",
+		UUID:            "client_container2016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "vipSvc",
+		ServiceUUID:     "vipSvc",
+		PrimaryIp:       "172.17.0.4",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 	containers = []metadata.Container{c1, c2}
 	svcWithLinks := metadata.Service{
-		Name:       "svcWithLinks",
-		Kind:       "service",
-		StackName:  "foo",
-		Links:      links,
-		Containers: containers,
+		Name:            "svcWithLinks",
+		UUID:            "svcWithLinks",
+		Kind:            "service",
+		StackName:       "foo",
+		Links:           links,
+		Containers:      containers,
+		EnvironmentName: "Default",
 	}
 
 	links = make(map[string]string)
-	links["foo/regularSvc"] = "myalias"
+	links["myalias"] = "regularSvc"
 	c1 = metadata.Container{
-		Name:        "client_container",
-		StackName:   "foo",
-		ServiceName: "vipSvc",
-		PrimaryIp:   "172.17.0.6",
-		State:       "running",
+		Name:            "client_container6",
+		UUID:            "client_container6016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "vipSvc",
+		ServiceUUID:     "vipSvc",
+		PrimaryIp:       "172.17.0.6",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 	c2 = metadata.Container{
-		Name:        "client_container",
-		StackName:   "foo",
-		ServiceName: "vipSvc",
-		PrimaryIp:   "172.17.0.7",
-		State:       "running",
+		Name:            "client_container7",
+		UUID:            "client_container7016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "vipSvc",
+		ServiceUUID:     "vipSvc",
+		PrimaryIp:       "172.17.0.7",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 	containers = []metadata.Container{c1, c2}
 	svcWithLinksAlias := metadata.Service{
-		Name:       "svcWithLinksAlias",
-		Kind:       "service",
-		StackName:  "foo",
-		Links:      links,
-		Containers: containers,
+		Name:            "svcWithLinksAlias",
+		UUID:            "svcWithLinksAlias",
+		Kind:            "service",
+		StackName:       "foo",
+		Links:           links,
+		Containers:      containers,
+		EnvironmentName: "Default",
 	}
 
 	links = make(map[string]string)
-	links["foo/externalCnameSvc"] = "myaliascname"
+	links["myaliascname"] = "externalCnameSvc"
 	c1 = metadata.Container{
-		Name:        "client_container1",
-		UUID:        "client_container1",
-		StackName:   "foo",
-		ServiceName: "svcWithLinksAliasCname",
-		PrimaryIp:   "172.17.0.66",
-		State:       "running",
+		Name:            "client_container66",
+		UUID:            "client_container66016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "svcWithLinksAliasCname",
+		ServiceUUID:     "svcWithLinksAliasCname",
+		PrimaryIp:       "172.17.0.66",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 	c2 = metadata.Container{
-		Name:        "client_container1",
-		UUID:        "client_container1",
-		StackName:   "foo",
-		ServiceName: "svcWithLinksAliasCname",
-		PrimaryIp:   "172.17.0.77",
-		State:       "running",
+		Name:            "client_container77",
+		UUID:            "client_container77016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "svcWithLinksAliasCname",
+		ServiceUUID:     "svcWithLinksAliasCname",
+		PrimaryIp:       "172.17.0.77",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 	containers = []metadata.Container{c1, c2}
 	svcWithLinksAliasCname := metadata.Service{
-		Name:       "svcWithLinksAliasCname",
-		Kind:       "service",
-		StackName:  "foo",
-		Links:      links,
-		Containers: containers,
+		Name:            "svcWithLinksAliasCname",
+		UUID:            "svcWithLinksAliasCname",
+		Kind:            "service",
+		StackName:       "foo",
+		Links:           links,
+		Containers:      containers,
+		EnvironmentName: "Default",
 	}
 
 	c = metadata.Container{
-		Name:        "primary",
-		StackName:   "foo",
-		ServiceName: "primary",
-		PrimaryIp:   "192.168.0.1",
-		State:       "running",
+		Name:            "primary",
+		UUID:            "primary016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "primary",
+		ServiceUUID:     "primary",
+		PrimaryIp:       "192.168.0.1",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 	containers = []metadata.Container{c}
 	primary := metadata.Service{
-		Name:       "primary",
-		Kind:       "service",
-		StackName:  "foo",
-		Containers: containers,
+		Name:            "primary",
+		UUID:            "primary",
+		Kind:            "service",
+		StackName:       "foo",
+		Containers:      containers,
+		EnvironmentName: "Default",
 	}
 
 	c = metadata.Container{
-		Name:        "sidekick",
-		StackName:   "foo",
-		ServiceName: "sidekick",
-		PrimaryIp:   "192.168.0.2",
-		State:       "running",
+		Name:            "sidekick",
+		UUID:            "sidekick016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "sidekick",
+		ServiceUUID:     "sidekick",
+		PrimaryIp:       "192.168.0.2",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 	containers = []metadata.Container{c}
 	sidekick := metadata.Service{
 		Name:               "sidekick",
+		UUID:               "sidekick",
 		Kind:               "service",
 		StackName:          "foo",
 		PrimaryServiceName: "primary",
 		Containers:         containers,
+		EnvironmentName:    "Default",
 	}
 
 	c = metadata.Container{
-		Name:        "clientKubernetes",
-		StackName:   "foo",
-		ServiceName: "clientKubernetes",
-		PrimaryIp:   "172.17.0.11",
-		State:       "running",
+		Name:            "clientKubernetes",
+		UUID:            "clientKubernetes016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "clientKubernetes",
+		ServiceUUID:     "clientKubernetes",
+		PrimaryIp:       "172.17.0.11",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 	containers = []metadata.Container{c}
 	kubernetes := metadata.Service{
-		Name:       "clientKubernetes",
-		Kind:       "kubernetesService",
-		StackName:  "foo",
-		Containers: containers,
+		Name:            "clientKubernetes",
+		UUID:            "clientKubernetes",
+		Kind:            "kubernetesService",
+		StackName:       "foo",
+		Containers:      containers,
+		EnvironmentName: "Default",
 	}
 
 	c = metadata.Container{
-		Name:        "clientKubernetesVip",
-		StackName:   "foo",
-		ServiceName: "clientKubernetesVip",
-		PrimaryIp:   "172.17.0.12",
-		State:       "running",
+		Name:            "clientKubernetesVip",
+		UUID:            "clientKubernetesVip016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "clientKubernetesVip",
+		ServiceUUID:     "clientKubernetesVip",
+		PrimaryIp:       "172.17.0.12",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 	containers = []metadata.Container{c}
 	kubernetesVip := metadata.Service{
-		Name:       "clientKubernetesVip",
-		Vip:        "10.1.1.1",
-		Kind:       "kubernetesService",
-		StackName:  "foo",
-		Containers: containers,
+		Name:            "clientKubernetesVip",
+		UUID:            "clientKubernetesVip",
+		Vip:             "10.1.1.1",
+		Kind:            "kubernetesService",
+		StackName:       "foo",
+		Containers:      containers,
+		EnvironmentName: "Default",
 	}
 
 	c1 = metadata.Container{
-		Name:        "healthEmpty1",
-		StackName:   "foo",
-		ServiceName: "healthEmpty",
-		PrimaryIp:   "192.168.0.33",
-		State:       "running",
-		HealthState: "initializing",
+		Name:            "healthEmpty1",
+		UUID:            "healthEmpty1016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "healthEmpty",
+		ServiceUUID:     "healthEmpty",
+		PrimaryIp:       "192.168.0.33",
+		State:           "running",
+		HealthState:     "initializing",
+		EnvironmentName: "Default",
 	}
 	c2 = metadata.Container{
-		Name:        "healthEmpty2",
-		StackName:   "foo",
-		ServiceName: "healthEmpty",
-		PrimaryIp:   "192.168.0.34",
-		State:       "running",
-		HealthState: "healthy",
+		Name:            "healthEmpty2",
+		UUID:            "healthEmpty2016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "healthEmpty",
+		ServiceUUID:     "healthEmpty",
+		PrimaryIp:       "192.168.0.34",
+		State:           "running",
+		HealthState:     "healthy",
+		EnvironmentName: "Default",
 	}
 	c3 := metadata.Container{
-		Name:        "healthEmpty3",
-		StackName:   "foo",
-		ServiceName: "healthEmpty",
-		PrimaryIp:   "192.168.0.35",
-		State:       "running",
+		Name:            "healthEmpty3",
+		UUID:            "healthEmpty3016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "healthEmpty",
+		ServiceUUID:     "healthEmpty",
+		PrimaryIp:       "192.168.0.35",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 	containers = []metadata.Container{c1, c2, c3}
 	healthCheck := metadata.HealthCheck{
 		Port: 100,
 	}
 	healthEmpty := metadata.Service{
-		Name:        "healthEmpty",
-		Kind:        "service",
-		StackName:   "foo",
-		Containers:  containers,
-		HealthCheck: healthCheck,
+		Name:            "healthEmpty",
+		UUID:            "healthEmpty016d5f89-f44b",
+		Kind:            "service",
+		StackName:       "foo",
+		Containers:      containers,
+		HealthCheck:     healthCheck,
+		EnvironmentName: "Default",
 	}
 
 	c = metadata.Container{
-		Name:        "primaryn",
-		StackName:   "foo",
-		ServiceName: "primaryn",
-		PrimaryIp:   "192.168.0.11",
-		State:       "running",
-		UUID:        "primaryn",
+		Name:            "primaryn",
+		StackName:       "foo",
+		ServiceName:     "primaryn",
+		ServiceUUID:     "primaryn",
+		PrimaryIp:       "192.168.0.11",
+		State:           "running",
+		UUID:            "primaryn016d5f89-f44b",
+		EnvironmentName: "Default",
 	}
 	containers = []metadata.Container{c}
 	primaryn := metadata.Service{
-		Name:       "primaryn",
-		Kind:       "service",
-		StackName:  "foo",
-		Containers: containers,
+		Name:            "primaryn",
+		UUID:            "primaryn",
+		Kind:            "service",
+		StackName:       "foo",
+		Containers:      containers,
+		EnvironmentName: "Default",
 	}
 
 	c = metadata.Container{
 		Name:        "sidekickn",
-		UUID:        "sidekickn",
+		UUID:        "sidekickn016d5f89-f44b",
 		StackName:   "foo",
 		ServiceName: "sidekickn",
+		ServiceUUID: "sidekickn",
 		State:       "running",
-		NetworkFromContainerUUID: "primaryn",
+		NetworkFromContainerUUID: "primaryn016d5f89-f44b",
+		EnvironmentName:          "Default",
 	}
 	containers = []metadata.Container{c}
 	sidekickn := metadata.Service{
@@ -880,189 +993,238 @@ func (mf tMetaFetcher) GetServices() ([]metadata.Service, error) {
 		StackName:          "foo",
 		PrimaryServiceName: "primaryn",
 		Containers:         containers,
+		EnvironmentName:    "Default",
 	}
 
-	services = append(services, kubernetes, healthEmpty, primaryn, sidekickn, kubernetesVip, clientip1Svc, vip, primary, sidekick, regular, stopped, stoppedone, unhealthy, externalCname, svcWithLinksAliasCname, svcWithLinksAlias, externalIPs, alias, client, svcWithLinks)
+	services = append(services, kubernetes, healthEmpty, primaryn,
+		sidekickn, kubernetesVip, clientip1Svc, vip, primary,
+		sidekick, regular, stopped, stoppedone, unhealthy,
+		externalCname, svcWithLinksAliasCname, svcWithLinksAlias,
+		externalIPs, alias, client, svcWithLinks)
 	return services, nil
 }
 
 func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 	c1 := metadata.Container{
-		Name:        "clientip1",
-		UUID:        "clientip1",
-		StackName:   "foo",
-		ServiceName: "clientip1Svc",
-		PrimaryIp:   "172.17.0.2",
-		State:       "running",
-		DnsSearch:   []string{"regularSvc.rancher.internal", "foo.rancher.internal", "rancher.internal"},
+		Name:            "clientip1",
+		UUID:            "clientip1016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "clientip1Svc",
+		ServiceUUID:     "clientip1Svc",
+		PrimaryIp:       "172.17.0.2",
+		State:           "running",
+		EnvironmentName: "Default",
+
+		DnsSearch: []string{"regularSvc.discover.internal", "foo.discover.internal", "discover.internal"},
 	}
 
 	c2 := metadata.Container{
-		Name:        "clientip1",
-		UUID:        "clientip1",
-		StackName:   "foo",
-		ServiceName: "svcWithLinks",
-		PrimaryIp:   "172.17.0.3",
-		State:       "running",
-		DnsSearch:   []string{"svcWithLinks.rancher.internal", "foo.rancher.internal", "rancher.internal"},
+		Name:            "clientip3",
+		UUID:            "clientip3016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "svcWithLinks",
+		ServiceUUID:     "svcWithLinks",
+		PrimaryIp:       "172.17.0.3",
+		State:           "running",
+		EnvironmentName: "Default",
+
+		DnsSearch: []string{"svcWithLinks.discover.internal", "foo.discover.internal", "discover.internal"},
 	}
 
 	c3 := metadata.Container{
-		Name:        "clientip1",
-		UUID:        "clientip1",
-		StackName:   "foo",
-		ServiceName: "svcWithLinks",
-		PrimaryIp:   "172.17.0.4",
-		State:       "running",
-		DnsSearch:   []string{"svcWithLinks.rancher.internal", "foo.rancher.internal", "rancher.internal"},
+		Name:            "clientip4",
+		UUID:            "clientip4016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "svcWithLinks",
+		ServiceUUID:     "svcWithLinks",
+		PrimaryIp:       "172.17.0.4",
+		State:           "running",
+		EnvironmentName: "Default",
+
+		DnsSearch: []string{"svcWithLinks.discover.internal", "foo.discover.internal", "discover.internal"},
 	}
 	c4 := metadata.Container{
-		Name:        "client_container",
-		UUID:        "client_container",
-		StackName:   "foo",
-		ServiceName: "svcWithLinksAlias",
-		PrimaryIp:   "172.17.0.6",
-		State:       "running",
-		DnsSearch:   []string{"svcWithLinksAlias.rancher.internal", "foo.rancher.internal", "rancher.internal"},
+		Name:            "client_container6",
+		UUID:            "client_container6016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "svcWithLinksAlias",
+		ServiceUUID:     "svcWithLinksAlias",
+		PrimaryIp:       "172.17.0.6",
+		State:           "running",
+		EnvironmentName: "Default",
+
+		DnsSearch: []string{"svcWithLinksAlias.discover.internal", "foo.discover.internal", "discover.internal"},
 	}
 	c5 := metadata.Container{
-		Name:        "client_container",
-		UUID:        "client_container",
-		StackName:   "foo",
-		ServiceName: "svcWithLinksAlias",
-		PrimaryIp:   "172.17.0.7",
-		State:       "running",
-		DnsSearch:   []string{"svcWithLinksAlias.rancher.internal", "foo.rancher.internal", "rancher.internal"},
+		Name:            "client_container7",
+		UUID:            "client_container7016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "svcWithLinksAlias",
+		ServiceUUID:     "svcWithLinksAlias",
+		PrimaryIp:       "172.17.0.7",
+		State:           "running",
+		EnvironmentName: "Default",
+
+		DnsSearch: []string{"svcWithLinksAlias.discover.internal", "foo.discover.internal", "discover.internal"},
 	}
 	c6 := metadata.Container{
-		Name:      "clientStandalone",
-		UUID:      "clientStandalone",
-		PrimaryIp: "172.17.0.10",
-		State:     "running",
-		DnsSearch: []string{"regularSvc.rancher.internal", "foo.rancher.internal", "rancher.internal"},
+		Name:            "clientStandalone",
+		UUID:            "clientStandalone016d5f89-f44b",
+		PrimaryIp:       "172.17.0.10",
+		State:           "running",
+		EnvironmentName: "Default",
+
+		DnsSearch: []string{"regularSvc.discover.internal", "foo.discover.internal", "discover.internal"},
 	}
 	c7 := metadata.Container{
-		Name:        "clientKubernetes",
-		UUID:        "clientKubernetes",
-		StackName:   "foo",
-		ServiceName: "clientKubernetes",
-		PrimaryIp:   "172.17.0.11",
-		State:       "running",
+		Name:            "clientKubernetes",
+		UUID:            "clientKubernetes016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "clientKubernetes",
+		ServiceUUID:     "clientKubernetes",
+		PrimaryIp:       "172.17.0.11",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 
 	c8 := metadata.Container{
-		Name:        "clientKubernetesVip",
-		UUID:        "clientKubernetesVip",
-		StackName:   "foo",
-		ServiceName: "clientKubernetesVip",
-		PrimaryIp:   "172.17.0.12",
-		State:       "running",
+		Name:            "clientKubernetesVip",
+		UUID:            "clientKubernetesVip016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "clientKubernetesVip",
+		ServiceUUID:     "clientKubernetesVip",
+		PrimaryIp:       "172.17.0.12",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 
 	c9 := metadata.Container{
-		Name:        "clientKubernetesVip",
-		UUID:        "clientKubernetesVip",
-		StackName:   "foo",
-		ServiceName: "clientKubernetesVip",
-		PrimaryIp:   "192.168.0.33",
-		State:       "running",
+		Name:            "clientKubernetesVip",
+		UUID:            "clientKubernetesVip016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "clientKubernetesVip",
+		ServiceUUID:     "clientKubernetesVip",
+		PrimaryIp:       "192.168.0.33",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 	c10 := metadata.Container{
-		Name:        "healthEmpty1",
-		UUID:        "healthEmpty1",
-		StackName:   "foo",
-		ServiceName: "healthEmpty",
-		PrimaryIp:   "192.168.0.33",
-		State:       "running",
+		Name:            "healthEmpty1",
+		UUID:            "healthEmpty1016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "healthEmpty",
+		ServiceUUID:     "healthEmpty",
+		PrimaryIp:       "192.168.0.33",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 
 	c11 := metadata.Container{
-		Name:      "networkFromMaster",
-		UUID:      "networkFromMaster",
-		PrimaryIp: "192.168.0.34",
-		State:     "running",
+		Name:            "networkFromMaster",
+		UUID:            "networkFromMaster016d5f89-f44b",
+		PrimaryIp:       "192.168.0.34",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 	c12 := metadata.Container{
 		Name:  "networkFromChild",
-		UUID:  "networkFromChild",
+		UUID:  "networkFromChild016d5f89-f44b",
 		State: "running",
-		NetworkFromContainerUUID: "networkFromMaster",
+		NetworkFromContainerUUID: "networkFromMaster016d5f89-f44b",
+		EnvironmentName:          "Default",
 	}
 
 	c13 := metadata.Container{
 		Name:        "sidekickn",
-		UUID:        "sidekickn",
+		UUID:        "sidekickn016d5f89-f44b",
 		StackName:   "foo",
 		ServiceName: "sidekickn",
+		ServiceUUID: "sidekickn",
 		State:       "running",
-		NetworkFromContainerUUID: "primaryn",
+		NetworkFromContainerUUID: "primaryn016d5f89-f44b",
+		EnvironmentName:          "Default",
 	}
 
 	c14 := metadata.Container{
-		Name:        "primaryn",
-		UUID:        "primaryn",
-		StackName:   "foo",
-		ServiceName: "primaryn",
-		PrimaryIp:   "192.168.0.11",
-		State:       "running",
+		Name:            "primaryn",
+		UUID:            "primaryn016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "primaryn",
+		ServiceUUID:     "primaryn",
+		PrimaryIp:       "192.168.0.11",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 
 	c15 := metadata.Container{
-		Name:        "client_container1",
-		UUID:        "client_container1",
-		StackName:   "foo",
-		ServiceName: "svcWithLinksAliasCname",
-		PrimaryIp:   "172.17.0.66",
-		State:       "running",
-		DnsSearch:   []string{"svcWithLinksAliasCname.rancher.internal", "foo.rancher.internal", "rancher.internal"},
+		Name:            "client_container66",
+		UUID:            "client_container66016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "svcWithLinksAliasCname",
+		ServiceUUID:     "svcWithLinksAliasCname",
+		PrimaryIp:       "172.17.0.66",
+		State:           "running",
+		EnvironmentName: "Default",
+
+		DnsSearch: []string{"svcWithLinksAliasCname.discover.internal", "foo.discover.internal", "discover.internal"},
 	}
 	c16 := metadata.Container{
-		Name:        "client_container2",
-		UUID:        "client_container2",
-		StackName:   "foo",
-		ServiceName: "svcWithLinksAliasCname",
-		PrimaryIp:   "172.17.0.77",
-		State:       "running",
-		DnsSearch:   []string{"svcWithLinksAliasCname.rancher.internal", "foo.rancher.internal", "rancher.internal"},
+		Name:            "client_container77",
+		UUID:            "client_container77016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "svcWithLinksAliasCname",
+		ServiceUUID:     "svcWithLinksAliasCname",
+		PrimaryIp:       "172.17.0.77",
+		State:           "running",
+		EnvironmentName: "Default",
+
+		DnsSearch: []string{"svcWithLinksAliasCname.discover.internal", "foo.discover.internal", "discover.internal"},
 	}
 	links := make(map[string]string)
-	links["containerLink"] = "regular_container"
+	links["containerLink"] = "regular_container016d5f89-f44b"
 	c17 := metadata.Container{
-		Name:      "client_container777",
-		UUID:      "client_container777",
-		PrimaryIp: "172.17.0.777",
-		State:     "running",
-		Links:     links,
+		Name:            "client_container777",
+		UUID:            "client_container777016d5f89-f44b",
+		PrimaryIp:       "172.17.0.777",
+		State:           "running",
+		Links:           links,
+		EnvironmentName: "Default",
 	}
 
 	c18 := metadata.Container{
-		Name:        "regular_container",
-		UUID:        "regular_container",
-		StackName:   "foo",
-		ServiceName: "regularSvc",
-		PrimaryIp:   "192.168.1.1",
-		State:       "running",
+		Name:            "regular_container",
+		UUID:            "regular_container016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "regularSvc",
+		ServiceUUID:     "regularSvc",
+		PrimaryIp:       "192.168.1.1",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 
 	c19 := metadata.Container{
-		Name:        "healthEmpty2",
-		UUID:        "healthEmpty2",
-		StackName:   "foo",
-		ServiceName: "healthEmpty",
-		PrimaryIp:   "192.168.0.34",
-		State:       "running",
+		Name:            "healthEmpty2",
+		UUID:            "healthEmpty2016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "healthEmpty",
+		PrimaryIp:       "192.168.0.34",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 
 	c20 := metadata.Container{
-		Name:        "healthEmpty3",
-		UUID:        "healthEmpty3",
-		StackName:   "foo",
-		ServiceName: "healthEmpty",
-		PrimaryIp:   "192.168.0.35",
-		State:       "running",
+		Name:            "healthEmpty3",
+		UUID:            "healthEmpty3016d5f89-f44b",
+		StackName:       "foo",
+		ServiceName:     "healthEmpty",
+		PrimaryIp:       "192.168.0.35",
+		State:           "running",
+		EnvironmentName: "Default",
 	}
 
-	containers := []metadata.Container{c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20}
+	containers := []metadata.Container{c1, c2, c3, c4, c5, c6,
+		c7, c8, c9, c10, c11, c12, c13, c14,
+		c15, c16, c17, c18, c19, c20}
 	return containers, nil
 }
 
