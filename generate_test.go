@@ -143,8 +143,8 @@ func TestAliasService(t *testing.T) {
 	}
 
 	a := getRecordAFromDefault(answers, "aliasSvc.foo.default.discover.internal.")
-	if len(a.Answer) != 2 {
-		t.Fatalf("Incorrect number of A records, should be 2: [%v]", len(a.Answer))
+	if len(a.Answer) != 1 {
+		t.Fatalf("Incorrect number of A records, should be 1: [%v]", len(a.Answer))
 	}
 }
 
@@ -499,41 +499,6 @@ func getRecordCnameFromDefault(answers Answers, fqdn string) RecordCname {
 	return c
 }
 
-func (mf tMetaFetcher) GetService(svcName string, stackName string) (*metadata.Service, error) {
-	if svcName == "regularSvc" && stackName == "foo" {
-		c1 := metadata.Container{
-			Name:            "regular_container1",
-			UUID:            "regular_container1016d5f89-f44b",
-			StackName:       "foo",
-			ServiceName:     "regularSvc",
-			ServiceUUID:     "regularSvc",
-			PrimaryIp:       "192.168.1.1",
-			State:           "running",
-			EnvironmentName: "Default",
-		}
-		c2 := metadata.Container{
-			Name:            "regular_container2",
-			UUID:            "regular_container2016d5f89-f44b",
-			StackName:       "foo",
-			ServiceName:     "regularSvc",
-			ServiceUUID:     "regularSvc",
-			PrimaryIp:       "192.168.1.2",
-			State:           "running",
-			EnvironmentName: "Default",
-		}
-		containers := []metadata.Container{c1, c2}
-		return &metadata.Service{
-			Name:            "regularSvc",
-			UUID:            "regularSvc",
-			Kind:            "service",
-			StackName:       "foo",
-			Containers:      containers,
-			EnvironmentName: "Default",
-		}, nil
-	}
-	return nil, nil
-}
-
 func (mf tMetaFetcher) GetServices() ([]metadata.Service, error) {
 	var services []metadata.Service
 
@@ -698,7 +663,7 @@ func (mf tMetaFetcher) GetServices() ([]metadata.Service, error) {
 	}
 
 	links := make(map[string]string)
-	links["foo/regularSvc"] = "foo/regularSvc"
+	links["foo/regularSvc"] = "regularSvc"
 	alias := metadata.Service{
 		Name:            "aliasSvc",
 		UUID:            "aliasSvc",
@@ -729,7 +694,7 @@ func (mf tMetaFetcher) GetServices() ([]metadata.Service, error) {
 	}
 
 	links = make(map[string]string)
-	links["foo/regularSvc"] = "foo/regularSvc"
+	links["foo/regularSvc"] = "regularSvc"
 	c1 = metadata.Container{
 		Name:            "client_container1",
 		UUID:            "client_container1016d5f89-f44b",

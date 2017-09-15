@@ -21,7 +21,6 @@ var (
 )
 
 type MetadataFetcher interface {
-	GetService(svcName string, stackName string) (*metadata.Service, error)
 	GetServices() ([]metadata.Service, error)
 	GetContainers() ([]metadata.Container, error)
 	OnChange(intervalSeconds int, do func(string))
@@ -103,7 +102,11 @@ func (c *ConfigGenerator) GenerateAnswers() (Answers, error) {
 		// 2. set service links
 		// note that service link overrides the container link (if the names collide)
 		for linkAlias, linkName := range clientUuidToServiceLinks[uuid] {
+			if _, ok := svcUUIDToSvc[linkName]; !ok {
+				continue
+			}
 			linkedService := svcUUIDToSvc[linkName]
+
 			linkServiceFqdn := getServiceFqdn(&linkedService)
 			if _, ok := aRecs[linkServiceFqdn]; ok {
 				cARecs[getAliasFqdn(linkAlias)] = aRecs[linkServiceFqdn]
@@ -194,8 +197,10 @@ func (c *ConfigGenerator) GetRecords() (map[string]RecordA, map[string]RecordCna
 	// get service records
 	for _, svc := range services {
 		svcUUIDToSvc[svc.UUID] = svc
+	}
 
-		records, err := c.getServiceEndpoints(&svc, uuidToPrimaryIp)
+	for _, svc := range services {
+		records, err := c.getServiceEndpoints(&svc, uuidToPrimaryIp, svcUUIDToSvc)
 		if err != nil {
 			return nil, nil, nil, nil, nil, nil, err
 		}
@@ -377,13 +382,13 @@ func getContainerFqdn(c *metadata.Container, s *metadata.Service) string {
 	return strings.ToLower(fmt.Sprintf("%s.%s.%s.", c.Name, c.EnvironmentName, getDefaultRancherNamespace()))
 }
 
-func (c *ConfigGenerator) getServiceEndpoints(svc *metadata.Service, uuidToPrimaryIp map[string]string) ([]*Record, error) {
+func (c *ConfigGenerator) getServiceEndpoints(svc *metadata.Service, uuidToPrimaryIp map[string]string, svcUUIDToSvc map[string]metadata.Service) ([]*Record, error) {
 	var records []*Record
 	var err error
 	if strings.EqualFold(svc.Kind, "externalService") {
 		records = c.getExternalServiceEndpoints(svc)
 	} else if strings.EqualFold(svc.Kind, "dnsService") {
-		records, err = c.getAliasServiceEndpoints(svc, uuidToPrimaryIp)
+		records, err = c.getAliasServiceEndpoints(svc, uuidToPrimaryIp, svcUUIDToSvc)
 		if err != nil {
 			return nil, err
 		}
@@ -446,18 +451,17 @@ func (c *ConfigGenerator) getExternalServiceEndpoints(svc *metadata.Service) []*
 	return recs
 }
 
-func (c *ConfigGenerator) getAliasServiceEndpoints(svc *metadata.Service, uuidToPrimaryIp map[string]string) ([]*Record, error) {
+func (c *ConfigGenerator) getAliasServiceEndpoints(svc *metadata.Service, uuidToPrimaryIp map[string]string, svcUUIDToSvc map[string]metadata.Service) ([]*Record, error) {
 	var recs []*Record
-	for link := range svc.Links {
-		svcName := strings.SplitN(link, "/", 2)
-		service, err := c.metaFetcher.GetService(svcName[1], svcName[0])
-		if err != nil {
-			return nil, err
-		}
-		if service == nil {
+	for _, svcUUID := range svc.Links {
+		if svcUUID == "" {
 			continue
 		}
-		newRecs, err := c.getServiceEndpoints(service, uuidToPrimaryIp)
+		if _, ok := svcUUIDToSvc[svcUUID]; !ok {
+			continue
+		}
+		service := svcUUIDToSvc[svcUUID]
+		newRecs, err := c.getServiceEndpoints(&service, uuidToPrimaryIp, svcUUIDToSvc)
 		if err != nil {
 			return nil, err
 		}
@@ -471,21 +475,6 @@ type Record struct {
 	IsHealthy bool
 	IsCname   bool
 	Container *metadata.Container
-}
-
-func (mf rMetaFetcher) GetService(svcName string, stackName string) (*metadata.Service, error) {
-	svcs, err := mf.metadataClient.GetServices()
-	if err != nil {
-		return nil, err
-	}
-	var service metadata.Service
-	for _, svc := range svcs {
-		if strings.EqualFold(svc.Name, svcName) && strings.EqualFold(svc.StackName, stackName) {
-			service = svc
-			break
-		}
-	}
-	return &service, nil
 }
 
 func (mf rMetaFetcher) GetServices() ([]metadata.Service, error) {
