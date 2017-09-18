@@ -127,6 +127,7 @@ func loadAnswersFromMeta(name string) {
 	newAnswers, err := configGenerator.GenerateAnswers()
 	if err != nil {
 		log.Errorf("Failed to generate answers: %v", err)
+		return
 	}
 	ConvertPtrIps(&newAnswers)
 
