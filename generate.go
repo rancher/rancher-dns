@@ -134,7 +134,7 @@ func (c *ConfigGenerator) GenerateAnswers() (Answers, error) {
 			Recurse:       recurse,
 			Authoritative: []string{},
 		}
-		answers[uuid] = a
+		answers[uuid[:12]] = a
 		answers[container.PrimaryIp] = a
 	}
 
