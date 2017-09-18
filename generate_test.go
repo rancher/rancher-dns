@@ -191,7 +191,7 @@ func TestClientKubernetes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error generating answers %v", err)
 	}
-	ip := "clientKubernetes016d5f89-f44b"
+	ip := "clientKubern"
 	c := getClientAnswers(answers, ip)
 	if c == nil {
 		t.Fatalf("Can't find client answers for: [%v]", ip)
@@ -216,7 +216,7 @@ func TestVipClientKubernetes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error generating answers %v", err)
 	}
-	uuid := "clientKubernetesVip016d5f89-f44b"
+	uuid := "clientKubern"
 	c := getClientAnswers(answers, uuid)
 	if c == nil {
 		t.Fatalf("Can't find client answers for: [%v]", uuid)
@@ -258,7 +258,7 @@ func TestClientWithLinksNoAlias(t *testing.T) {
 		t.Fatalf("Error generating answers %v", err)
 	}
 
-	ips := []string{"client_container1016d5f89-f44b", "client_container2016d5f89-f44b"}
+	ips := []string{"container101", "container201"}
 	for _, ip := range ips {
 		c := getClientAnswers(answers, ip)
 		if c == nil {
@@ -697,7 +697,7 @@ func (mf tMetaFetcher) GetServices() ([]metadata.Service, error) {
 	links["foo/regularSvc"] = "regularSvc"
 	c1 = metadata.Container{
 		Name:            "client_container1",
-		UUID:            "client_container1016d5f89-f44b",
+		UUID:            "container1016",
 		StackName:       "foo",
 		ServiceName:     "vipSvc",
 		ServiceUUID:     "vipSvc",
@@ -707,7 +707,7 @@ func (mf tMetaFetcher) GetServices() ([]metadata.Service, error) {
 	}
 	c2 = metadata.Container{
 		Name:            "client_container2",
-		UUID:            "client_container2016d5f89-f44b",
+		UUID:            "container2016",
 		StackName:       "foo",
 		ServiceName:     "vipSvc",
 		ServiceUUID:     "vipSvc",
