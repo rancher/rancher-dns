@@ -135,7 +135,9 @@ func (c *ConfigGenerator) GenerateAnswers() (Answers, error) {
 			Authoritative: []string{},
 		}
 		answers[uuid[:12]] = a
-		answers[container.PrimaryIp] = a
+		if container.PrimaryIp != "" {
+			answers[container.PrimaryIp] = a
+		}
 	}
 
 	globalRecurse, err := getGlobalRecurse()
@@ -241,7 +243,7 @@ func (c *ConfigGenerator) GetRecords() (map[string]RecordA, map[string]RecordCna
 				aRecs[getServiceFqdn(&svc)] = aRec
 			}
 
-			if rec.Container != nil {
+			if rec.Container != nil && rec.Container.PrimaryIp != "" {
 				aRec := RecordA{
 					Answer: []string{rec.Container.PrimaryIp},
 				}
@@ -419,13 +421,15 @@ func (c *ConfigGenerator) getRegularServiceEndpoints(svc *metadata.Service, uuid
 		if primaryIP == "" && c.NetworkFromContainerUUID != "" {
 			primaryIP = uuidToPrimaryIp[c.NetworkFromContainerUUID]
 		}
-		rec := &Record{
-			IP:        primaryIP,
-			IsHealthy: isHealthy && isRunning,
-			IsCname:   false,
-			Container: &svc.Containers[i],
+		if primaryIP != "" {
+			rec := &Record{
+				IP:        primaryIP,
+				IsHealthy: isHealthy && isRunning,
+				IsCname:   false,
+				Container: &svc.Containers[i],
+			}
+			recs = append(recs, rec)
 		}
-		recs = append(recs, rec)
 	}
 	return recs
 }
