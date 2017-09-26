@@ -693,6 +693,8 @@ func (mf tMetaFetcher) GetServices() ([]metadata.Service, error) {
 		EnvironmentName: "Default",
 	}
 
+	dnsLabels := make(map[string]string)
+	dnsLabels["io.rancher.container.dns"] = "true"
 	links = make(map[string]string)
 	links["foo/regularSvc"] = "regularSvc"
 	c1 = metadata.Container{
@@ -703,6 +705,7 @@ func (mf tMetaFetcher) GetServices() ([]metadata.Service, error) {
 		ServiceUUID:     "vipSvc",
 		PrimaryIp:       "172.17.0.3",
 		State:           "running",
+		Labels:          dnsLabels,
 		EnvironmentName: "Default",
 	}
 	c2 = metadata.Container{
@@ -713,6 +716,7 @@ func (mf tMetaFetcher) GetServices() ([]metadata.Service, error) {
 		ServiceUUID:     "vipSvc",
 		PrimaryIp:       "172.17.0.4",
 		State:           "running",
+		Labels:          dnsLabels,
 		EnvironmentName: "Default",
 	}
 	containers = []metadata.Container{c1, c2}
@@ -970,6 +974,8 @@ func (mf tMetaFetcher) GetServices() ([]metadata.Service, error) {
 }
 
 func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
+	dnsLabels := make(map[string]string)
+	dnsLabels["io.rancher.container.dns"] = "true"
 	c1 := metadata.Container{
 		Name:            "clientip1",
 		UUID:            "clientip1016d5f89-f44b",
@@ -979,8 +985,8 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		PrimaryIp:       "172.17.0.2",
 		State:           "running",
 		EnvironmentName: "Default",
-
-		DnsSearch: []string{"regularSvc.discover.internal", "foo.discover.internal", "discover.internal"},
+		Labels:          dnsLabels,
+		DnsSearch:       []string{"regularSvc.discover.internal", "foo.discover.internal", "discover.internal"},
 	}
 
 	c2 := metadata.Container{
@@ -992,8 +998,8 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		PrimaryIp:       "172.17.0.3",
 		State:           "running",
 		EnvironmentName: "Default",
-
-		DnsSearch: []string{"svcWithLinks.discover.internal", "foo.discover.internal", "discover.internal"},
+		Labels:          dnsLabels,
+		DnsSearch:       []string{"svcWithLinks.discover.internal", "foo.discover.internal", "discover.internal"},
 	}
 
 	c3 := metadata.Container{
@@ -1005,8 +1011,8 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		PrimaryIp:       "172.17.0.4",
 		State:           "running",
 		EnvironmentName: "Default",
-
-		DnsSearch: []string{"svcWithLinks.discover.internal", "foo.discover.internal", "discover.internal"},
+		Labels:          dnsLabels,
+		DnsSearch:       []string{"svcWithLinks.discover.internal", "foo.discover.internal", "discover.internal"},
 	}
 	c4 := metadata.Container{
 		Name:            "client_container6",
@@ -1017,8 +1023,8 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		PrimaryIp:       "172.17.0.6",
 		State:           "running",
 		EnvironmentName: "Default",
-
-		DnsSearch: []string{"svcWithLinksAlias.discover.internal", "foo.discover.internal", "discover.internal"},
+		Labels:          dnsLabels,
+		DnsSearch:       []string{"svcWithLinksAlias.discover.internal", "foo.discover.internal", "discover.internal"},
 	}
 	c5 := metadata.Container{
 		Name:            "client_container7",
@@ -1029,8 +1035,8 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		PrimaryIp:       "172.17.0.7",
 		State:           "running",
 		EnvironmentName: "Default",
-
-		DnsSearch: []string{"svcWithLinksAlias.discover.internal", "foo.discover.internal", "discover.internal"},
+		Labels:          dnsLabels,
+		DnsSearch:       []string{"svcWithLinksAlias.discover.internal", "foo.discover.internal", "discover.internal"},
 	}
 	c6 := metadata.Container{
 		Name:            "clientStandalone",
@@ -1038,8 +1044,8 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		PrimaryIp:       "172.17.0.10",
 		State:           "running",
 		EnvironmentName: "Default",
-
-		DnsSearch: []string{"regularSvc.discover.internal", "foo.discover.internal", "discover.internal"},
+		Labels:          dnsLabels,
+		DnsSearch:       []string{"regularSvc.discover.internal", "foo.discover.internal", "discover.internal"},
 	}
 	c7 := metadata.Container{
 		Name:            "clientKubernetes",
@@ -1049,6 +1055,7 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		ServiceUUID:     "clientKubernetes",
 		PrimaryIp:       "172.17.0.11",
 		State:           "running",
+		Labels:          dnsLabels,
 		EnvironmentName: "Default",
 	}
 
@@ -1060,6 +1067,7 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		ServiceUUID:     "clientKubernetesVip",
 		PrimaryIp:       "172.17.0.12",
 		State:           "running",
+		Labels:          dnsLabels,
 		EnvironmentName: "Default",
 	}
 
@@ -1071,6 +1079,7 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		ServiceUUID:     "clientKubernetesVip",
 		PrimaryIp:       "192.168.0.33",
 		State:           "running",
+		Labels:          dnsLabels,
 		EnvironmentName: "Default",
 	}
 	c10 := metadata.Container{
@@ -1081,6 +1090,7 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		ServiceUUID:     "healthEmpty",
 		PrimaryIp:       "192.168.0.33",
 		State:           "running",
+		Labels:          dnsLabels,
 		EnvironmentName: "Default",
 	}
 
@@ -1089,6 +1099,7 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		UUID:            "networkFromMaster016d5f89-f44b",
 		PrimaryIp:       "192.168.0.34",
 		State:           "running",
+		Labels:          dnsLabels,
 		EnvironmentName: "Default",
 	}
 	c12 := metadata.Container{
@@ -1097,6 +1108,7 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		State: "running",
 		NetworkFromContainerUUID: "networkFromMaster016d5f89-f44b",
 		EnvironmentName:          "Default",
+		Labels:                   dnsLabels,
 	}
 
 	c13 := metadata.Container{
@@ -1108,6 +1120,7 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		State:       "running",
 		NetworkFromContainerUUID: "primaryn016d5f89-f44b",
 		EnvironmentName:          "Default",
+		Labels:                   dnsLabels,
 	}
 
 	c14 := metadata.Container{
@@ -1119,6 +1132,7 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		PrimaryIp:       "192.168.0.11",
 		State:           "running",
 		EnvironmentName: "Default",
+		Labels:          dnsLabels,
 	}
 
 	c15 := metadata.Container{
@@ -1130,8 +1144,8 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		PrimaryIp:       "172.17.0.66",
 		State:           "running",
 		EnvironmentName: "Default",
-
-		DnsSearch: []string{"svcWithLinksAliasCname.discover.internal", "foo.discover.internal", "discover.internal"},
+		Labels:          dnsLabels,
+		DnsSearch:       []string{"svcWithLinksAliasCname.discover.internal", "foo.discover.internal", "discover.internal"},
 	}
 	c16 := metadata.Container{
 		Name:            "client_container77",
@@ -1142,8 +1156,8 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		PrimaryIp:       "172.17.0.77",
 		State:           "running",
 		EnvironmentName: "Default",
-
-		DnsSearch: []string{"svcWithLinksAliasCname.discover.internal", "foo.discover.internal", "discover.internal"},
+		Labels:          dnsLabels,
+		DnsSearch:       []string{"svcWithLinksAliasCname.discover.internal", "foo.discover.internal", "discover.internal"},
 	}
 	links := make(map[string]string)
 	links["containerLink"] = "regular_container016d5f89-f44b"
@@ -1153,6 +1167,7 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		PrimaryIp:       "172.17.0.777",
 		State:           "running",
 		Links:           links,
+		Labels:          dnsLabels,
 		EnvironmentName: "Default",
 	}
 
@@ -1164,6 +1179,7 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		ServiceUUID:     "regularSvc",
 		PrimaryIp:       "192.168.1.1",
 		State:           "running",
+		Labels:          dnsLabels,
 		EnvironmentName: "Default",
 	}
 
@@ -1174,6 +1190,7 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		ServiceName:     "healthEmpty",
 		PrimaryIp:       "192.168.0.34",
 		State:           "running",
+		Labels:          dnsLabels,
 		EnvironmentName: "Default",
 	}
 
@@ -1184,6 +1201,7 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		ServiceName:     "healthEmpty",
 		PrimaryIp:       "192.168.0.35",
 		State:           "running",
+		Labels:          dnsLabels,
 		EnvironmentName: "Default",
 	}
 
