@@ -161,7 +161,7 @@ func TestClientNoLinks(t *testing.T) {
 	if len(c.A) != 0 {
 		t.Fatalf("Incorrect number of A records: [%v]", len(c.A))
 	}
-	a := getRecordAFromDefault(answers, "clientIp1.default.discover.internal.")
+	a := getRecordAFromDefault(answers, "clientIp1.foo.default.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of A records, should be 1: [%v]", len(a.Answer))
 	}
@@ -180,7 +180,7 @@ func TestClientStandalone(t *testing.T) {
 	if len(c.A) != 0 {
 		t.Fatalf("Incorrect number of A records: [%v]", len(c.A))
 	}
-	a := getRecordAFromDefault(answers, "clientStandalone.default.discover.internal.")
+	a := getRecordAFromDefault(answers, "clientStandalone.default.default.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of A records, should be 1: [%v]", len(a.Answer))
 	}
@@ -284,7 +284,7 @@ func TestNetworkFrom(t *testing.T) {
 	if len(c.A) != 0 {
 		t.Fatalf("Incorrect number of A records: [%v]", len(c.A))
 	}
-	a := getRecordAFromDefault(answers, "networkFromMaster.default.discover.internal.")
+	a := getRecordAFromDefault(answers, "networkFromMaster.default.default.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of A records, should be 1: [%v]", len(a.Answer))
 	}
@@ -292,7 +292,7 @@ func TestNetworkFrom(t *testing.T) {
 		t.Fatal("Incorrect ip for master, should be: [192.168.0.34]")
 	}
 
-	a = getRecordAFromDefault(answers, "networkFromChild.default.discover.internal.")
+	a = getRecordAFromDefault(answers, "networkFromChild.default.default.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of A records, should be 1: [%v]", len(a.Answer))
 	}
@@ -426,7 +426,7 @@ func TestNSidekicks(t *testing.T) {
 		t.Fatalf("Incorrect answer for primary service ip [%v]", a.Answer[0])
 	}
 
-	a = getRecordAFromDefault(answers, "primaryn.default.discover.internal.")
+	a = getRecordAFromDefault(answers, "primaryn.foo.default.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of answers for primary service container [%v]", a.Answer)
 	}
@@ -442,7 +442,7 @@ func TestNSidekicks(t *testing.T) {
 		t.Fatalf("Incorrect answer for sidekick service [%v]", a.Answer[0])
 	}
 
-	a = getRecordAFromDefault(answers, "sidekickn.default.discover.internal.")
+	a = getRecordAFromDefault(answers, "sidekickn.foo.default.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of answers for sidekick service container [%v]", a.Answer)
 	}
@@ -1037,6 +1037,7 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		UUID:            "clientStandalone016d5f89-f44b",
 		PrimaryIp:       "172.17.0.10",
 		State:           "running",
+		StackName:       "Default",
 		EnvironmentName: "Default",
 
 		DnsSearch: []string{"regularSvc.discover.internal", "foo.discover.internal", "discover.internal"},
@@ -1089,12 +1090,14 @@ func (mf tMetaFetcher) GetContainers() ([]metadata.Container, error) {
 		UUID:            "networkFromMaster016d5f89-f44b",
 		PrimaryIp:       "192.168.0.34",
 		State:           "running",
+		StackName:       "Default",
 		EnvironmentName: "Default",
 	}
 	c12 := metadata.Container{
-		Name:  "networkFromChild",
-		UUID:  "networkFromChild016d5f89-f44b",
-		State: "running",
+		Name:                     "networkFromChild",
+		UUID:                     "networkFromChild016d5f89-f44b",
+		State:                    "running",
+		StackName:                "Default",
 		NetworkFromContainerUUID: "networkFromMaster016d5f89-f44b",
 		EnvironmentName:          "Default",
 	}
