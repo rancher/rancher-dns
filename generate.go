@@ -79,6 +79,16 @@ func getAliasFqdn(alias string) string {
 	return fmt.Sprintf("%s.", alias)
 }
 
+func setClient(c *metadata.Container) bool {
+	if c.Labels == nil {
+		return false
+	}
+	if val, ok := c.Labels["io.rancher.container.dns"]; ok {
+		return strings.EqualFold(val, "true")
+	}
+	return false
+}
+
 func (c *ConfigGenerator) GenerateAnswers() (Answers, error) {
 	answers := make(Answers)
 	aRecs, cRecs, clientUuidToServiceLinks, clientUuidToContainerLinks, clientUuidToContainer, svcUUIDToSvc, err := c.GetRecords()
@@ -88,6 +98,9 @@ func (c *ConfigGenerator) GenerateAnswers() (Answers, error) {
 
 	//generate client record
 	for uuid, container := range clientUuidToContainer {
+		if !setClient(&container) {
+			continue
+		}
 		cARecs := make(map[string]RecordA)
 		cCnameRecs := make(map[string]RecordCname)
 
