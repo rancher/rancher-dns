@@ -381,7 +381,7 @@ func getContainerFqdn(c *metadata.Container, s *metadata.Service) string {
 		return strings.ToLower(fmt.Sprintf("%s.%s.%s.%s.", c.Name, s.Name, s.StackName, getServiceGlobalNamespace(s)))
 
 	}
-	return strings.ToLower(fmt.Sprintf("%s.%s.%s.", c.Name, c.EnvironmentName, getDefaultRancherNamespace()))
+	return strings.ToLower(fmt.Sprintf("%s.%s.%s.%s.", c.Name, c.StackName, c.EnvironmentName, getDefaultRancherNamespace()))
 }
 
 func (c *ConfigGenerator) getServiceEndpoints(svc *metadata.Service, uuidToPrimaryIp map[string]string, svcUUIDToSvc map[string]metadata.Service) ([]*Record, error) {
