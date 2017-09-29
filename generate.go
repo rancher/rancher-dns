@@ -40,7 +40,7 @@ func (mf rMetaFetcher) GetSelfHost() (metadata.Host, error) {
 }
 
 func (c *ConfigGenerator) Init(metadataServer *string) error {
-	metadataClient, err := metadata.NewClientAndWait(fmt.Sprintf("http://%s/2016-07-29", *metadataServer))
+	metadataClient, err := metadata.NewClientAndWait(fmt.Sprintf("http://%s/2017-04-22", *metadataServer))
 	if err != nil {
 		logrus.Errorf("Error initiating metadata client: %v", err)
 		return err
