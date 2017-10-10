@@ -13,11 +13,15 @@ var (
 )
 
 type MetadataFetcher interface {
-	GetService(svcName string, stackName string) (*metadata.Service, error)
+	GetService(link string) (*metadata.Service, error)
 	GetServices() ([]metadata.Service, error)
 	GetContainers() ([]metadata.Container, error)
 	OnChange(intervalSeconds int, do func(string))
 	GetSelfHost() (metadata.Host, error)
+	GetRegionName() (string, error)
+	GetServiceFromRegionEnvironment(regionName string, envName string, stackName string, svcName string) (metadata.Service, error)
+	GetServiceInLocalRegion(envName string, stackName string, svcName string) (metadata.Service, error)
+	GetServiceInLocalEnvironment(stackName string, svcName string) (metadata.Service, error)
 }
 
 type rMetaFetcher struct {
@@ -32,8 +36,12 @@ func (mf rMetaFetcher) GetSelfHost() (metadata.Host, error) {
 	return mf.metadataClient.GetSelfHost()
 }
 
+func (mf rMetaFetcher) GetRegionName() (string, error) {
+	return mf.metadataClient.GetRegionName()
+}
+
 func (c *ConfigGenerator) Init(metadataServer *string) error {
-	metadataClient, err := metadata.NewClientAndWait(fmt.Sprintf("http://%s/2015-12-19", *metadataServer))
+	metadataClient, err := metadata.NewClientAndWait(fmt.Sprintf("http://%s/2016-07-29", *metadataServer))
 	if err != nil {
 		logrus.Errorf("Error initiating metadata client: %v", err)
 		return err
@@ -45,12 +53,61 @@ func (c *ConfigGenerator) Init(metadataServer *string) error {
 	return nil
 }
 
+func (c *ConfigGenerator) SetLinksForRegions(key string, linkAlias string, cARecs map[string]RecordA, cCnameRecs map[string]RecordCname, aRegionRecs map[string]RecordA, cRegionRecs map[string]RecordCname) {
+	_, inaRegionRecs := aRegionRecs[key]
+	_, incRegionRecs := cRegionRecs[key]
+	if !inaRegionRecs && !incRegionRecs {
+		linkedService, err := c.metaFetcher.GetService(key)
+		if err != nil {
+			logrus.Infof("Couldn't find linked service %v ", err)
+			return
+		}
+		uuidToPrimaryIp := make(map[string]string)
+		for _, c := range linkedService.Containers {
+			if c.PrimaryIp == "" {
+				continue
+			}
+			uuidToPrimaryIp[c.UUID] = c.PrimaryIp
+		}
+		records, err := c.getServiceEndpoints(linkedService, uuidToPrimaryIp)
+		if err != nil {
+			logrus.Warn(err)
+			return
+		}
+		for _, record := range records {
+			if record.IsCname {
+				cnameRec := RecordCname{
+					Answer: fmt.Sprintf("%s.", record.IP),
+				}
+				cRegionRecs[key] = cnameRec
+				continue
+			}
+			aRec := RecordA{
+				Answer: []string{record.IP},
+			}
+			if existing, ok := aRegionRecs[key]; ok {
+				aRec.Answer = append(aRec.Answer, existing.Answer...)
+			}
+			aRegionRecs[key] = aRec
+		}
+	}
+	if _, ok := aRegionRecs[key]; ok {
+		cARecs[fmt.Sprintf("%s.", linkAlias)] = aRegionRecs[key]
+		cARecs[fmt.Sprintf("%s.%s.", linkAlias, getDefaultRancherNamespace())] = aRegionRecs[key]
+	} else if _, ok := cRegionRecs[key]; ok {
+		cCnameRecs[fmt.Sprintf("%s.", linkAlias)] = cRegionRecs[key]
+		cCnameRecs[fmt.Sprintf("%s.%s.", linkAlias, getDefaultRancherNamespace())] = cRegionRecs[key]
+	}
+}
+
 func (c *ConfigGenerator) GenerateAnswers() (Answers, error) {
 	answers := make(Answers)
 	aRecs, cRecs, clientIpsToServiceLinks, clientIpsToContainerLinks, clientIpToContainer, svcNameToSvc, err := c.GetRecords()
 	if err != nil {
 		return nil, err
 	}
+	aRegionRecs := make(map[string]RecordA)
+	cRegionRecs := make(map[string]RecordCname)
 
 	//generate client record
 	for clientIp, container := range clientIpToContainer {
@@ -68,24 +125,29 @@ func (c *ConfigGenerator) GenerateAnswers() (Answers, error) {
 		// 2. set service links
 		// note that service link overrides the container link (if the names collide)
 		for key, linkAlias := range clientIpsToServiceLinks[clientIp] {
-			if strings.EqualFold(key, linkAlias) {
-				// skip non-aliased service links
-				// they are present in defaults
-				continue
-			}
-			linkedService := svcNameToSvc[key]
-			linkServiceFqdn := getServiceFqdn(&linkedService)
-			globalAliasName := getLinkGlobalFqdn(linkAlias, &linkedService)
-			stackAliasName := getLinkStackFqdn(linkAlias, &linkedService)
-			if _, ok := aRecs[linkServiceFqdn]; ok {
-				//we store 2 A records for link:
-				// a) linkName.namespace
-				// b) linkName.stackName.namespace
-				cARecs[stackAliasName] = aRecs[linkServiceFqdn]
-				cARecs[globalAliasName] = aRecs[linkServiceFqdn]
-			} else if _, ok := cRecs[linkServiceFqdn]; ok {
-				cCnameRecs[stackAliasName] = cRecs[linkServiceFqdn]
-				cCnameRecs[globalAliasName] = cRecs[linkServiceFqdn]
+			splitSvcName := strings.Split(key, "/")
+			if len(splitSvcName) > 2 {
+				c.SetLinksForRegions(key, linkAlias, cARecs, cCnameRecs, aRegionRecs, cRegionRecs)
+			} else {
+				if strings.EqualFold(key, linkAlias) {
+					// skip non-aliased service links
+					// they are present in defaults
+					continue
+				}
+				linkedService := svcNameToSvc[key]
+				linkServiceFqdn := getServiceFqdn(&linkedService)
+				globalAliasName := getLinkGlobalFqdn(linkAlias, &linkedService)
+				stackAliasName := getLinkStackFqdn(linkAlias, &linkedService)
+				if _, ok := aRecs[linkServiceFqdn]; ok {
+					//we store 2 A records for link:
+					// a) linkName.namespace
+					// b) linkName.stackName.namespace
+					cARecs[stackAliasName] = aRecs[linkServiceFqdn]
+					cARecs[globalAliasName] = aRecs[linkServiceFqdn]
+				} else if _, ok := cRecs[linkServiceFqdn]; ok {
+					cCnameRecs[stackAliasName] = cRecs[linkServiceFqdn]
+					cCnameRecs[globalAliasName] = cRecs[linkServiceFqdn]
+				}
 			}
 		}
 
@@ -419,8 +481,7 @@ func (c *ConfigGenerator) getExternalServiceEndpoints(svc *metadata.Service) []*
 func (c *ConfigGenerator) getAliasServiceEndpoints(svc *metadata.Service, uuidToPrimaryIp map[string]string) ([]*Record, error) {
 	var recs []*Record
 	for link := range svc.Links {
-		svcName := strings.SplitN(link, "/", 2)
-		service, err := c.metaFetcher.GetService(svcName[1], svcName[0])
+		service, err := c.metaFetcher.GetService(link)
 		if err != nil {
 			return nil, err
 		}
@@ -443,19 +504,31 @@ type Record struct {
 	Container *metadata.Container
 }
 
-func (mf rMetaFetcher) GetService(svcName string, stackName string) (*metadata.Service, error) {
-	svcs, err := mf.metadataClient.GetServices()
-	if err != nil {
-		return nil, err
+func (mf rMetaFetcher) GetService(link string) (*metadata.Service, error) {
+	splitSvcName := strings.Split(link, "/")
+	var linkedService metadata.Service
+	var err error
+
+	if len(splitSvcName) == 4 {
+		linkedService, err = mf.GetServiceFromRegionEnvironment(splitSvcName[0], splitSvcName[1], splitSvcName[2], splitSvcName[3])
+	} else if len(splitSvcName) == 3 {
+		linkedService, err = mf.GetServiceInLocalRegion(splitSvcName[0], splitSvcName[1], splitSvcName[2])
+	} else {
+		linkedService, err = mf.GetServiceInLocalEnvironment(splitSvcName[0], splitSvcName[1])
 	}
-	var service metadata.Service
-	for _, svc := range svcs {
-		if strings.EqualFold(svc.Name, svcName) && strings.EqualFold(svc.StackName, stackName) {
-			service = svc
-			break
-		}
-	}
-	return &service, nil
+	return &linkedService, err
+}
+
+func (mf rMetaFetcher) GetServiceFromRegionEnvironment(regionName string, envName string, stackName string, svcName string) (metadata.Service, error) {
+	return mf.metadataClient.GetServiceFromRegionEnvironment(regionName, envName, stackName, svcName)
+}
+
+func (mf rMetaFetcher) GetServiceInLocalRegion(envName string, stackName string, svcName string) (metadata.Service, error) {
+	return mf.metadataClient.GetServiceInLocalRegion(envName, stackName, svcName)
+}
+
+func (mf rMetaFetcher) GetServiceInLocalEnvironment(stackName string, svcName string) (metadata.Service, error) {
+	return mf.metadataClient.GetServiceInLocalEnvironment(stackName, svcName)
 }
 
 func (mf rMetaFetcher) GetServices() ([]metadata.Service, error) {
