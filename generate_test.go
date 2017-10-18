@@ -434,14 +434,6 @@ func TestNSidekicks(t *testing.T) {
 		t.Fatalf("Incorrect answer for primary service ip [%v]", a.Answer[0])
 	}
 
-	a = getRecordAFromDefault(answers, "sidekickn.primaryn.foo.default.discover.internal.")
-	if len(a.Answer) != 1 {
-		t.Fatalf("Incorrect number of answers for sidekick service [%v]", a.Answer)
-	}
-	if a.Answer[0] != "192.168.0.11" {
-		t.Fatalf("Incorrect answer for sidekick service [%v]", a.Answer[0])
-	}
-
 	a = getRecordAFromDefault(answers, "sidekickn.foo.default.discover.internal.")
 	if len(a.Answer) != 1 {
 		t.Fatalf("Incorrect number of answers for sidekick service container [%v]", a.Answer)

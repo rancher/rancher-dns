@@ -202,7 +202,7 @@ func (c *ConfigGenerator) GetRecords() (map[string]RecordA, map[string]RecordCna
 	}
 
 	for _, svc := range services {
-		records, err := c.getServiceEndpoints(&svc, uuidToPrimaryIp, svcUUIDToSvc)
+		records, err := c.getServiceEndpoints(&svc, svcUUIDToSvc)
 		if err != nil {
 			return nil, nil, nil, nil, nil, nil, err
 		}
@@ -384,23 +384,23 @@ func getContainerFqdn(c *metadata.Container, s *metadata.Service) string {
 	return strings.ToLower(fmt.Sprintf("%s.%s.%s.%s.", c.Name, c.StackName, c.EnvironmentName, getDefaultRancherNamespace()))
 }
 
-func (c *ConfigGenerator) getServiceEndpoints(svc *metadata.Service, uuidToPrimaryIp map[string]string, svcUUIDToSvc map[string]metadata.Service) ([]*Record, error) {
+func (c *ConfigGenerator) getServiceEndpoints(svc *metadata.Service, svcUUIDToSvc map[string]metadata.Service) ([]*Record, error) {
 	var records []*Record
 	var err error
 	if strings.EqualFold(svc.Kind, "externalService") {
 		records = c.getExternalServiceEndpoints(svc)
 	} else if strings.EqualFold(svc.Kind, "dnsService") {
-		records, err = c.getAliasServiceEndpoints(svc, uuidToPrimaryIp, svcUUIDToSvc)
+		records, err = c.getAliasServiceEndpoints(svc, svcUUIDToSvc)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		records = c.getRegularServiceEndpoints(svc, uuidToPrimaryIp)
+		records = c.getRegularServiceEndpoints(svc)
 	}
 	return records, nil
 }
 
-func (c *ConfigGenerator) getRegularServiceEndpoints(svc *metadata.Service, uuidToPrimaryIp map[string]string) []*Record {
+func (c *ConfigGenerator) getRegularServiceEndpoints(svc *metadata.Service) []*Record {
 	var recs []*Record
 	//get vip
 	if svc.Vip != "" {
@@ -418,9 +418,6 @@ func (c *ConfigGenerator) getRegularServiceEndpoints(svc *metadata.Service, uuid
 		isRunning := strings.EqualFold(c.State, "running") || strings.EqualFold(c.State, "starting")
 		isHealthy := (strings.EqualFold(c.HealthState, "") && svc.HealthCheck.Port == 0) || strings.EqualFold(c.HealthState, "healthy") || strings.EqualFold(c.HealthState, "updating-healthy")
 		primaryIP := c.PrimaryIp
-		if primaryIP == "" && c.NetworkFromContainerUUID != "" {
-			primaryIP = uuidToPrimaryIp[c.NetworkFromContainerUUID]
-		}
 		if primaryIP != "" {
 			rec := &Record{
 				IP:        primaryIP,
@@ -455,7 +452,7 @@ func (c *ConfigGenerator) getExternalServiceEndpoints(svc *metadata.Service) []*
 	return recs
 }
 
-func (c *ConfigGenerator) getAliasServiceEndpoints(svc *metadata.Service, uuidToPrimaryIp map[string]string, svcUUIDToSvc map[string]metadata.Service) ([]*Record, error) {
+func (c *ConfigGenerator) getAliasServiceEndpoints(svc *metadata.Service, svcUUIDToSvc map[string]metadata.Service) ([]*Record, error) {
 	var recs []*Record
 	for _, svcUUID := range svc.Links {
 		if svcUUID == "" {
@@ -465,7 +462,7 @@ func (c *ConfigGenerator) getAliasServiceEndpoints(svc *metadata.Service, uuidTo
 			continue
 		}
 		service := svcUUIDToSvc[svcUUID]
-		newRecs, err := c.getServiceEndpoints(&service, uuidToPrimaryIp, svcUUIDToSvc)
+		newRecs, err := c.getServiceEndpoints(&service, svcUUIDToSvc)
 		if err != nil {
 			return nil, err
 		}
