@@ -7,3 +7,5 @@ pipeline:
     - /var/run/docker.sock:/var/run/docker.sock
     commands:
     - dapper ci
+    environment:
+    - CROSS=1

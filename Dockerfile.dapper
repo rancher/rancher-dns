@@ -9,16 +9,18 @@ RUN apt-get update && \
     rm -f /bin/sh && ln -s /bin/bash /bin/sh
 
 ENV GOLANG_ARCH_amd64=amd64 GOLANG_ARCH_arm=armv6l GOLANG_ARCH=GOLANG_ARCH_${ARCH} \
-    GOPATH=/go PATH=/go/bin:/usr/local/go/bin:${PATH} SHELL=/bin/bash
+    GOPATH=/go PATH=/go/bin:/usr/local/go/bin:/usr/bin/docker:${PATH} SHELL=/bin/bash
 
 RUN wget -O - https://storage.googleapis.com/golang/go1.8.3.linux-${!GOLANG_ARCH}.tar.gz | tar -xzf - -C /usr/local && \
     go get github.com/rancher/trash && go get github.com/golang/lint/golint
 
-ENV DOCKER_URL_amd64=https://get.docker.com/builds/Linux/x86_64/docker-1.10.3 \
+ENV DOCKER_URL_amd64=https://get.docker.com/builds/Linux/x86_64/docker-1.12.6.tgz \
     DOCKER_URL_arm=https://github.com/rancher/docker/releases/download/v1.10.3-ros1/docker-1.10.3_arm \
     DOCKER_URL=DOCKER_URL_${ARCH}
 
-RUN wget -O - ${!DOCKER_URL} > /usr/bin/docker && chmod +x /usr/bin/docker
+RUN wget -O - ${!DOCKER_URL} > /target && \
+    if [ "${ARCH}" == "arm" ]; then mv /target /usr/bin/docker && chmod +x /usr/bin/docker;   \
+    else tar xzf /target -C /usr/bin; fi
 
 RUN git clone https://github.com/sstephenson/bats.git && \
 	bats/install.sh /usr/local && \
@@ -27,7 +29,7 @@ RUN git clone https://github.com/sstephenson/bats.git && \
 ENV DAPPER_SOURCE /go/src/github.com/rancher/rancher-dns/
 ENV DAPPER_OUTPUT ./bin ./dist
 ENV DAPPER_DOCKER_SOCKET true
-ENV DAPPER_ENV REPO TAG
+ENV DAPPER_ENV REPO TAG CROSS WINDOWS_DOCKER_HOST
 ENV TRASH_CACHE ${DAPPER_SOURCE}/.trash-cache
 ENV HOME ${DAPPER_SOURCE}
 WORKDIR ${DAPPER_SOURCE}
