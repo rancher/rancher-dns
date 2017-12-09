@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../.." && pwd )"
-DNS_BIN="$ROOT/bin/rancher-dns"
+DNS_BIN="$ROOT/bin/linux/amd64/rancher-dns"
 DNS_CONF="$ROOT/test/fixtures/answers.json"
 DNS_PORT="15353"
 DIG_BIN="$(command -v dig )"
