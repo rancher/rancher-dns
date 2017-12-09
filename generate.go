@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
@@ -304,35 +302,6 @@ func splitTrim(s string, sep string) []string {
 		t[i] = strings.TrimSpace(t[i])
 	}
 	return t
-}
-
-func getGlobalRecurse() ([]string, error) {
-	var recurse []string
-	file, err := os.Open("/etc/resolv.conf")
-	if err != nil {
-		return recurse, err
-	}
-
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		l := scanner.Text()
-		l = strings.TrimSpace(l)
-		if strings.HasPrefix(l, "nameserver") {
-			dns := strings.TrimSpace(l[11:len(l)])
-			if invalidRecurse(dns) {
-				continue
-			}
-			recurse = append(recurse, dns)
-		}
-	}
-
-	if len(recurse) == 0 {
-		return fallbackRecurse, nil
-	}
-
-	return recurse, nil
 }
 
 func getDefaultRancherNamespace() string {
