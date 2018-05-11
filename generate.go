@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/leodotcloud/log"
 	"github.com/rancher/go-rancher-metadata/metadata"
 )
 
@@ -43,7 +43,7 @@ func (mf rMetaFetcher) GetRegionName() (string, error) {
 func (c *ConfigGenerator) Init(metadataServer *string) error {
 	metadataClient, err := metadata.NewClientAndWait(fmt.Sprintf("http://%s/2016-07-29", *metadataServer))
 	if err != nil {
-		logrus.Errorf("Error initiating metadata client: %v", err)
+		log.Errorf("Error initiating metadata client: %v", err)
 		return err
 	}
 
@@ -59,7 +59,7 @@ func (c *ConfigGenerator) SetLinksForRegions(key string, linkAlias string, cARec
 	if !inaRegionRecs && !incRegionRecs {
 		linkedService, err := c.metaFetcher.GetService(key)
 		if err != nil {
-			logrus.Infof("Couldn't find linked service %v ", err)
+			log.Infof("Couldn't find linked service %v ", err)
 			return
 		}
 		uuidToPrimaryIp := make(map[string]string)
@@ -71,7 +71,7 @@ func (c *ConfigGenerator) SetLinksForRegions(key string, linkAlias string, cARec
 		}
 		records, err := c.getServiceEndpoints(linkedService, uuidToPrimaryIp)
 		if err != nil {
-			logrus.Warn(err)
+			log.Warn(err)
 			return
 		}
 		for _, record := range records {

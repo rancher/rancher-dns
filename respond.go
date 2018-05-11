@@ -1,7 +1,7 @@
 package main
 
 import (
-	log "github.com/Sirupsen/logrus"
+	"github.com/leodotcloud/log"
 	"github.com/miekg/dns"
 )
 
@@ -24,15 +24,15 @@ func Respond(w dns.ResponseWriter, req *dns.Msg, m *dns.Msg) {
 	// If it's still too large we return a truncated message for UDP queries and ServerFailure for TCP queries.
 	if m.Len() > int(bufsize) {
 		fqdn := dns.Fqdn(req.Question[0].Name)
-		log.WithFields(log.Fields{"fqdn": fqdn}).Debug("Response too big, dropping Authority and Extra")
+		log.Debugf("Response too big, dropping Authority and Extra fqdn=%v", fqdn)
 		m.Extra = nil
 		if m.Len() > int(bufsize) {
 			if tcp {
-				log.WithFields(log.Fields{"fqdn": fqdn}).Debug("Response still too big, return ServerFailure")
+				log.Debugf("Response still too big, return ServerFailure fqdn=%v", fqdn)
 				m = new(dns.Msg)
 				m.SetRcode(req, dns.RcodeServerFailure)
 			} else {
-				log.WithFields(log.Fields{"fqdn": fqdn}).Debug("Response still too big, return truncated message")
+				log.Debugf("Response still too big, return truncated message fqdn=%v", fqdn)
 				m.Answer = nil
 				m.Truncated = true
 			}

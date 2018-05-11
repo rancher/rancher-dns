@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"os/exec"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/leodotcloud/log"
 )
 
 func getGlobalRecurse() ([]string, error) {

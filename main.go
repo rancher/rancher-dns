@@ -18,8 +18,9 @@ import (
 	"syscall"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
+	"github.com/leodotcloud/log"
+	logserver "github.com/leodotcloud/log/server"
 	"github.com/miekg/dns"
 	"github.com/rancher/rancher-dns/cache"
 )
@@ -55,6 +56,7 @@ func metadataDriven() bool {
 }
 
 func main() {
+	logserver.StartServerWithDefaults()
 	parseFlags()
 
 	log.Infof("Starting rancher-dns %s", VERSION)
@@ -102,7 +104,7 @@ func parseFlags() {
 	flag.Parse()
 
 	if *debug {
-		log.SetLevel(log.DebugLevel)
+		log.SetLevelString("debug")
 	}
 
 	if *logFile != "" {
@@ -223,7 +225,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 	// One question at a time please
 	if len(req.Question) != 1 {
 		dns.HandleFailed(w, req)
-		log.WithFields(log.Fields{"client": clientIp}).Warn("Rejected multi-question query")
+		log.Warnf("Rejected multi-question query client=%v", clientIp)
 		return
 	}
 
@@ -240,7 +242,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 		m.RecursionAvailable = false
 		m.Rcode = dns.RcodeNotImplemented
 		w.WriteMsg(m)
-		log.WithFields(log.Fields{"question": fqdn, "type": rrString, "client": clientIp}).Warn("Rejected non-inet query")
+		log.Warnf("Rejected non-inet query question=%v type=%v client=%v", fqdn, rrString, clientIp)
 		return
 	}
 
@@ -251,7 +253,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 		m.RecursionAvailable = false
 		m.Rcode = dns.RcodeNotImplemented
 		w.WriteMsg(m)
-		log.WithFields(log.Fields{"question": fqdn, "type": rrString, "client": clientIp}).Warn("Rejected ANY query")
+		log.Warnf("Rejected ANY query question=%v type=%v client=%v", fqdn, rrString, clientIp)
 		return
 	}
 
@@ -260,12 +262,12 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 		proto = "TCP"
 	}
 
-	log.WithFields(log.Fields{"question": fqdn, "type": rrString, "client": clientIp, "proto": proto}).Debug("Request")
+	log.Debugf("Request question=%v type=%v client=%v proto=%v", fqdn, rrString, clientIp, proto)
 
 	if msg, exp := clientSpecificCacheHit(clientIp, req); msg != nil {
 		update(msg, exp)
 		Respond(w, req, msg)
-		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent client-specific cached response")
+		log.Debugf("Sent client-specific cached response question=%v type=%v client=%v", fqdn, rrString, clientIp)
 		return
 	}
 
@@ -273,7 +275,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 	if question.Qtype == dns.TypeA {
 		found, ok := answers.Addresses(clientIp, fqdn, nil, 1)
 		if ok && len(found) > 0 {
-			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn, "answers": len(found)}).Debug("Answered locally")
+			log.Debugf("Answered locally question=%v type=%v client=%v answers=%v", fqdn, rrString, clientIp, len(found))
 			m.Answer = found
 			addToClientSpecificCache(clientIp, req, m)
 			Respond(w, req, m)
@@ -282,7 +284,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 	} else if question.Qtype == dns.TypeAAAA {
 		_, ok := answers.Addresses(clientIp, fqdn, nil, 1)
 		if ok {
-			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Answered locally, no error and empty answer")
+			log.Debugf("Answered locally, no error and empty answer question=%v type=%v client=%v", fqdn, rrString, clientIp)
 			m.Authoritative = true
 			m.Rcode = dns.RcodeSuccess
 			addToClientSpecificCache(clientIp, req, m)
@@ -296,7 +298,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 			// Client-specific answers
 			found, ok := answers.Matching(question.Qtype, key, fqdn)
 			if ok {
-				log.WithFields(log.Fields{"client": key, "type": rrString, "question": fqdn, "answers": len(found)}).Debug("Answered from config for ", key)
+				log.Debugf("Answered from config for %v question=%v type=%v client=%v answers=%v", key, fqdn, rrString, clientIp, len(found))
 				m.Answer = found
 				addToClientSpecificCache(clientIp, req, m)
 				Respond(w, req, m)
@@ -310,7 +312,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 	if msg, exp := globalCacheHit(req); msg != nil {
 		update(msg, exp)
 		Respond(w, req, msg)
-		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent globally cached response")
+		log.Debugf("Sent globally cached response question=%v type=%v client=%v", fqdn, rrString, clientIp)
 		return
 	}
 
@@ -318,7 +320,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 	authoritativeFor := answers.AuthoritativeSuffixes()
 	for _, suffix := range authoritativeFor {
 		if strings.HasSuffix(fqdn, suffix) {
-			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debugf("Not answered locally, but I am authoritative for %s", suffix)
+			log.Debugf("Not answered locally, but I am authoritative for %s question=%v type=%v client=%v", suffix, fqdn, rrString, clientIp)
 			m.Authoritative = true
 			m.RecursionAvailable = false
 			m.Rcode = dns.RcodeNameError
@@ -342,7 +344,7 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 		// doesn't necessarily mean there are never any records for that domain,
 		// so rewrite the response code to NOERROR.
 		if (question.Qtype == dns.TypeAAAA) && (msg.Rcode == dns.RcodeNameError) {
-			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Rewrote AAAA NXDOMAIN to NOERROR")
+			log.Debugf("Rewrote AAAA NXDOMAIN to NOERROR question=%v type=%v client=%v", fqdn, rrString, clientIp)
 			msg.Rcode = dns.RcodeSuccess
 		}
 
@@ -350,17 +352,17 @@ func route(w dns.ResponseWriter, req *dns.Msg) {
 		if msg, exp := globalCacheHit(req); msg != nil {
 			update(msg, exp)
 			Respond(w, req, msg)
-			log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent recursive response")
+			log.Debugf("Sent recursive response question=%v type=%v client=%v", fqdn, rrString, clientIp)
 			return
 		}
 		// For very small TTLs, globalCacheHit above could fail despite adding - respond with the original msg.
 		Respond(w, req, msg)
-		log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Debug("Sent recursive response")
+		log.Debugf("Sent recursive response question=%v type=%v client=%v", fqdn, rrString, clientIp)
 		return
 	}
 
 	// I give up
-	log.WithFields(log.Fields{"client": clientIp, "type": rrString, "question": fqdn}).Info("No answer found")
+	log.Infof("No answer found question=%v type=%v client=%v", fqdn, rrString, clientIp)
 	dns.HandleFailed(w, req)
 }
 
