@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/leodotcloud/log"
 	yaml "gopkg.in/yaml.v2"
 )
 
