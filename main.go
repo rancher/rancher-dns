@@ -19,9 +19,9 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/leodotcloud/log"
-	logserver "github.com/leodotcloud/log/server"
 	"github.com/miekg/dns"
+	"github.com/rancher/log"
+	logserver "github.com/rancher/log/server"
 	"github.com/rancher/rancher-dns/cache"
 )
 
