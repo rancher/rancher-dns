@@ -5,8 +5,8 @@ import (
 	"net"
 	"strings"
 
-	"github.com/leodotcloud/log"
 	"github.com/miekg/dns"
+	"github.com/rancher/log"
 )
 
 // The top-level key in the config for the default (not client-specific answers)

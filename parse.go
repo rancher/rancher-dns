@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/leodotcloud/log"
+	"github.com/rancher/log"
 	yaml "gopkg.in/yaml.v2"
 )
 

@@ -3,8 +3,8 @@ package main
 import (
 	"time"
 
-	"github.com/leodotcloud/log"
 	"github.com/miekg/dns"
+	"github.com/rancher/log"
 	"strings"
 )
 
