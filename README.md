@@ -18,15 +18,15 @@ A simple DNS server that returns different answers depending on the IP address o
 
 ## CLI Options
 
-Option      | Default               | Description
-------------|-----------------------|------------
-`--debug`   | *off*                 | If present, more debug info is logged
-`--listen`  | 0.0.0.0:53            | IP address and port to listen on (TCP &amp; UDP)
-`--answers` | ./answers.(yaml|json) | File containing the client-specific answers
-`--ttl`     | 600                   | Default TTL for local responses that are returned
-`--ndots`   | 0 (unlimited)         | Only recurse if there are less than this number of dots
-`--log`     | *none*                | Output log info to a file path instead of stdout
-`--pid-file`| *none*                | Write the server PID to a file path on startup
+Option      | Default                | Description
+------------|------------------------|------------
+`--debug`   | *off*                  | If present, more debug info is logged
+`--listen`  | 0.0.0.0:53             | IP address and port to listen on (TCP &amp; UDP)
+`--answers` | ./answers.(yaml\|json) | File containing the client-specific answers
+`--ttl`     | 600                    | Default TTL for local responses that are returned
+`--ndots`   | 0 (unlimited)          | Only recurse if there are less than this number of dots
+`--log`     | *none*                 | Output log info to a file path instead of stdout
+`--pid-file`| *none*                 | Write the server PID to a file path on startup
 
 ## JSON Answers File
 ```javascript
